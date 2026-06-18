@@ -201,7 +201,7 @@ async function sendBrevoEmail(
       "api-key": brevoKey,
     },
     body: JSON.stringify({
-      sender: { name: "ProServices", email: "yacinemathurin@gmail.com" }, // Must be a validated sender in your Brevo account
+      sender: { name: "AutomatPro", email: "yacinemathurin@gmail.com" }, // Must be a validated sender in your Brevo account
       to: [{ email: customerEmail, name: customerName }],
       subject: "Votre contrat est prêt à être signé",
       textContent: `Bonjour ${customerName}, merci pour votre accord. Veuillez cliquer sur ce lien pour signer votre contrat. Vous serez ensuite redirigé vers notre page de paiement sécurisé : ${signatureUrl}`,
