@@ -8,14 +8,13 @@ interface RequestBody {
   customerName: string;
   amount: number;
   customerEmail: string;
+  recordId: string; // Optional Airtable record ID
 }
 
 function isRequestBody(body: unknown): body is RequestBody {
   if (!body || typeof body !== "object") return false;
-  const { customerPhone, customerEmail, customerName, amount } = body as Record<
-    string,
-    unknown
-  >;
+  const { customerPhone, customerEmail, customerName, amount, recordId } =
+    body as Record<string, unknown>;
   return (
     typeof customerPhone === "string" &&
     typeof customerEmail === "string" &&
@@ -24,7 +23,8 @@ function isRequestBody(body: unknown): body is RequestBody {
     typeof customerName === "string" &&
     customerName.trim() !== "" &&
     typeof amount === "number" &&
-    amount > 0
+    amount > 0 &&
+    (typeof recordId === "string" || recordId === undefined)
   );
 }
 
@@ -58,6 +58,7 @@ async function createStripePaymentLink(
   customerEmail: string, // 💡 Ajoutez l'email (ou un airtableRecordId)
   customerPhone: string, // 💡 Ajoutez le numéro de téléphone
   amount: number,
+  recordId: string, // 💡 Ajoutez l'ID du record Airtable
 ): Promise<string> {
   const price = await stripe.prices.create({
     currency: "eur",
@@ -72,9 +73,17 @@ async function createStripePaymentLink(
 
     // 💡 PASSEZ LES METADATA POUR MAKE.COM
     metadata: {
+      // Customer
       customerEmail: customerEmail,
       customerName: customerName,
       customerPhone: customerPhone,
+      content: `Votre reservation pour la prestation de services. Montant: ${amount} EUR est validés. Merci pour votre confiance!`,
+      recordId: recordId,
+      // Sender
+      senderName: "AutomatPro",
+      senderPhone: "+33612345678",
+      ccName: "AutomatPro",
+      ccEmail: "yacinemathurin@gmail.com",
     },
   });
 
@@ -235,7 +244,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const { customerPhone, customerEmail, customerName, amount } = body;
+    const { customerPhone, customerEmail, customerName, amount, recordId } =
+      body;
 
     const stripe = new Stripe(env.stripeKey, {
       apiVersion: "2026-05-27.dahlia",
@@ -247,6 +257,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       customerEmail,
       customerPhone,
       amount,
+      recordId,
     );
 
     const signatureUrl = await createYouSignRequest(
