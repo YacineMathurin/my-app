@@ -9,50 +9,42 @@ interface RequestBody {
   amount: number;
 }
 
-interface YouSignSigner {
-  signature_link: string;
-}
-
-interface YouSignResponse {
-  signers: YouSignSigner[];
-}
-
 function isRequestBody(body: unknown): body is RequestBody {
   if (!body || typeof body !== "object") return false;
-  const { customerPhone, customerName, amount } = body as Record<string, unknown>;
+  const { customerPhone, customerName, amount } = body as Record<
+    string,
+    unknown
+  >;
   return (
-    typeof customerPhone === "string" && customerPhone.trim() !== "" &&
-    typeof customerName === "string" && customerName.trim() !== "" &&
-    typeof amount === "number" && amount > 0
-  );
-}
-
-function isYouSignResponse(data: unknown): data is YouSignResponse {
-  return (
-    !!data &&
-    typeof data === "object" &&
-    "signers" in data &&
-    Array.isArray((data as YouSignResponse).signers) &&
-    typeof (data as YouSignResponse).signers[0]?.signature_link === "string"
+    typeof customerPhone === "string" &&
+    customerPhone.trim() !== "" &&
+    typeof customerName === "string" &&
+    customerName.trim() !== "" &&
+    typeof amount === "number" &&
+    amount > 0
   );
 }
 
 // ── Env validation ───────────────────────────────────────────────────────────
 
-function getEnv(): {
+interface Env {
   stripeKey: string;
   yousignKey: string;
+  yousignTemplateId: string;
   brevoKey: string;
-} {
+}
+
+function getEnv(): Env {
   const stripeKey = process.env.STRIPE_SECRET_KEY_TEST;
   const yousignKey = process.env.YOUSIGN_API_KEY_SANDBOX;
+  const yousignTemplateId = process.env.YOUSIGN_DOCUMENT_TEMPLATE_ID_SANDBOX;
   const brevoKey = process.env.BREVO_API_KEY;
 
-  if (!stripeKey || !yousignKey || !brevoKey) {
+  if (!stripeKey || !yousignKey || !yousignTemplateId || !brevoKey) {
     throw new Error("Missing required environment variables");
   }
 
-  return { stripeKey, yousignKey, brevoKey };
+  return { stripeKey, yousignKey, yousignTemplateId, brevoKey };
 }
 
 // ── Step helpers ─────────────────────────────────────────────────────────────
@@ -62,7 +54,6 @@ async function createStripePaymentLink(
   customerName: string,
   amount: number,
 ): Promise<string> {
-  // Create a reusable Price, then a Payment Link — no success/cancel URL needed
   const price = await stripe.prices.create({
     currency: "eur",
     unit_amount: Math.round(amount * 100),
@@ -80,11 +71,13 @@ async function createStripePaymentLink(
 
 async function createYouSignRequest(
   yousignKey: string,
+  yousignTemplateId: string,
   customerName: string,
   customerPhone: string,
   stripeUrl: string,
 ): Promise<string> {
-  const response = await fetch(
+  // ── Step 1: Create the signature request ──────────────────────────────────
+  const requestResponse = await fetch(
     "https://api-sandbox.yousign.app/v3/signature_requests",
     {
       method: "POST",
@@ -96,32 +89,97 @@ async function createYouSignRequest(
         name: `Contrat de prestation - ${customerName}`,
         delivery_modes: ["none"],
         redirect_options: {
-          success: { url: stripeUrl }, // Client lands on Stripe right after signing
+          success: { url: stripeUrl },
         },
-        signers: [
-          {
-            info: {
-              first_name: customerName,
-              last_name: "Client",
-              phone_number: customerPhone,
-              locale: "fr",
-            },
-            signature_authentication_mode: "no_otp",
-          },
-        ],
+        document_template_ids: [yousignTemplateId],
+        sender: {
+          name: "ProServices",
+        },
       }),
     },
   );
 
-  if (!response.ok) {
-    const error: unknown = await response.json();
-    throw new Error(`YouSign error: ${JSON.stringify(error)}`);
+  if (!requestResponse.ok) {
+    const error: unknown = await requestResponse.json();
+    throw new Error(
+      `YouSign signature_request error: ${JSON.stringify(error)}`,
+    );
   }
 
-  const data: unknown = await response.json();
-  if (!isYouSignResponse(data)) throw new Error("Réponse YouSign invalide");
+  const requestData: unknown = await requestResponse.json();
+  if (
+    !requestData ||
+    typeof requestData !== "object" ||
+    !("id" in requestData) ||
+    typeof (requestData as Record<string, unknown>).id !== "string"
+  ) {
+    throw new Error("Réponse YouSign signature_request invalide");
+  }
 
-  return data.signers[0].signature_link;
+  const signatureRequestId = (requestData as { id: string }).id;
+
+  // ── Step 2: Add the signer ────────────────────────────────────────────────
+  const signerResponse = await fetch(
+    `https://api-sandbox.yousign.app/v3/signature_requests/${signatureRequestId}/signers`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${yousignKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        info: {
+          first_name: customerName,
+          last_name: "Client",
+          phone_number: customerPhone,
+          locale: "fr",
+        },
+        signature_authentication_mode: "no_otp",
+      }),
+    },
+  );
+
+  if (!signerResponse.ok) {
+    const error: unknown = await signerResponse.json();
+    throw new Error(`YouSign signer error: ${JSON.stringify(error)}`);
+  }
+
+  // ── Step 3: Activate ──────────────────────────────────────────────────────
+  const activateResponse = await fetch(
+    `https://api-sandbox.yousign.app/v3/signature_requests/${signatureRequestId}/activate`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${yousignKey}` },
+    },
+  );
+
+  if (!activateResponse.ok) {
+    const error: unknown = await activateResponse.json();
+    throw new Error(`YouSign activate error: ${JSON.stringify(error)}`);
+  }
+
+  const activateData: unknown = await activateResponse.json();
+  if (
+    !activateData ||
+    typeof activateData !== "object" ||
+    !("signers" in activateData) ||
+    !Array.isArray((activateData as { signers: unknown[] }).signers)
+  ) {
+    throw new Error("Réponse YouSign activate invalide");
+  }
+
+  const firstSigner: unknown = (activateData as { signers: unknown[] })
+    .signers[0];
+  if (
+    !firstSigner ||
+    typeof firstSigner !== "object" ||
+    !("signature_link" in firstSigner) ||
+    typeof (firstSigner as Record<string, unknown>).signature_link !== "string"
+  ) {
+    throw new Error("signature_link manquant après activation");
+  }
+
+  return (firstSigner as { signature_link: string }).signature_link;
 }
 
 async function sendBrevoSms(
@@ -170,11 +228,18 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const { customerPhone, customerName, amount } = body;
 
-    const stripe = new Stripe(env.stripeKey, { apiVersion: "2026-05-27.dahlia" });
+    const stripe = new Stripe(env.stripeKey, {
+      apiVersion: "2026-05-27.dahlia",
+    });
 
-    const stripeUrl = await createStripePaymentLink(stripe, customerName, amount);
+    const stripeUrl = await createStripePaymentLink(
+      stripe,
+      customerName,
+      amount,
+    );
     const signatureUrl = await createYouSignRequest(
       env.yousignKey,
+      env.yousignTemplateId,
       customerName,
       customerPhone,
       stripeUrl,
@@ -184,7 +249,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(
       {
         status: "success",
-        message: "Lien de paiement créé, contrat YouSign envoyé, SMS Brevo expédié.",
+        message:
+          "Lien de paiement créé, contrat YouSign envoyé, SMS Brevo expédié.",
       },
       { status: 200 },
     );
@@ -192,7 +258,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     const message = error instanceof Error ? error.message : "Erreur inconnue";
     console.error("Erreur dans le tunnel d'automatisation:", message);
     return NextResponse.json(
-      { error: "Échec du traitement du tunnel de validation.", details: message },
+      {
+        error: "Échec du traitement du tunnel de validation.",
+        details: message,
+      },
       { status: 500 },
     );
   }
