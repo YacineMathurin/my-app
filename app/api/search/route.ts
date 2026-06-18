@@ -1,29 +1,99 @@
 import { NextResponse } from "next/server";
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    // On récupère le numéro de téléphone envoyé par le webhook
-    const { customerPhone } = body;
+type FilterValue = string | number | boolean;
 
-    if (!customerPhone) {
+interface SearchRequestBody {
+  tableName: string;
+  filters: Record<string, FilterValue>;
+}
+
+function isFilterValue(value: unknown): value is FilterValue {
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
+function isSearchRequestBody(body: unknown): body is SearchRequestBody {
+  if (!body || typeof body !== "object") return false;
+
+  const { tableName, filters } = body as Record<string, unknown>;
+
+  if (typeof tableName !== "string" || !tableName.trim()) return false;
+  if (!filters || typeof filters !== "object" || Array.isArray(filters))
+    return false;
+
+  return Object.values(filters).every(isFilterValue);
+}
+
+function buildFilterFormula(filters: Record<string, FilterValue>): string {
+  const conditions = Object.entries(filters).map(([column, value]) => {
+    if (typeof value === "boolean") {
+      return `{${column}} = ${value ? "TRUE()" : "FALSE()"}`;
+    }
+    if (typeof value === "number") {
+      return `{${column}} = ${value}`;
+    }
+    return `{${column}} = '${value.replace(/'/g, "\\'")}'`;
+  });
+
+  return conditions.length === 1
+    ? conditions[0]
+    : `AND(${conditions.join(", ")})`;
+}
+
+/**
+ * 
+ * @param request 
+ * @returns 
+ * 
+ * Vapi should send a POST request to this endpoint with a JSON body structured like this:
+ * {
+        "tableName": "Clients",
+        "filters": {
+            "Telephone": "+33612345678",
+            "ContratActif": true,
+            "MontantDu": 0
+        }
+   }
+ */
+
+export async function POST(request: Request): Promise<NextResponse> {
+  try {
+    const body: unknown = await request.json();
+
+    if (!isSearchRequestBody(body)) {
       return NextResponse.json(
-        { error: "Numéro de téléphone manquant" },
+        {
+          error:
+            "Corps de requête invalide : tableName (string) et filters (objet de valeurs primitives) requis",
+        },
         { status: 400 },
       );
     }
 
-    // Configuration des accès Airtable (à mettre dans tes variables d'environnement .env)
-    const AIRTABLE_PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN; // Commence par pat.xxx
-    const BASE_ID = process.env.AIRTABLE_BASE_ID; // Commence par appxxx
-    const TABLE_NAME = encodeURIComponent("Clients"); // Nom de ta table
+    const { tableName, filters } = body;
 
-    // Formule Airtable pour chercher le téléphone exact (gère le format international ou local)
-    // Exemple : {Telephone} = '+33612345678'
-    const filterByFormula = `{Telephone} = '${customerPhone}'`;
+    if (Object.keys(filters).length === 0) {
+      return NextResponse.json(
+        { error: "Au moins un filtre est requis" },
+        { status: 400 },
+      );
+    }
 
-    // Appel à l'API de Airtable en natif (pas besoin de SDK lourd)
-    const airtableUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}?filterByFormula=${encodeURIComponent(filterByFormula)}&maxRecords=1`;
+    const AIRTABLE_PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
+    const BASE_ID = process.env.AIRTABLE_BASE_ID;
+
+    if (!AIRTABLE_PAT || !BASE_ID) {
+      return NextResponse.json(
+        { error: "Configuration Airtable manquante" },
+        { status: 500 },
+      );
+    }
+
+    const filterByFormula = buildFilterFormula(filters);
+    const airtableUrl = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(tableName)}?filterByFormula=${encodeURIComponent(filterByFormula)}&maxRecords=1`;
 
     const response = await fetch(airtableUrl, {
       method: "GET",
@@ -31,12 +101,11 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${AIRTABLE_PAT}`,
         "Content-Type": "application/json",
       },
-      // Optionnel : évite le cache de Vercel pour avoir les données en temps réel
       cache: "no-store",
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData: unknown = await response.json();
       console.error("Erreur Airtable:", errorData);
       return NextResponse.json(
         { error: "Erreur lors de la recherche Airtable" },
@@ -44,32 +113,38 @@ export async function POST(request: Request) {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
 
-    // ─── ANALYSE DU RÉSULTAT ───
-    if (data.records && data.records.length > 0) {
-      const clientRecord = data.records[0];
+    if (
+      data &&
+      typeof data === "object" &&
+      "records" in data &&
+      Array.isArray(data.records) &&
+      data.records.length > 0
+    ) {
+      const record: unknown = data.records[0];
 
-      // On renvoie les infos utiles à Make / Vapi
-      return NextResponse.json(
-        {
-          found: true,
-          id: clientRecord.id,
-          name: clientRecord.fields.Nom, // Nom de ton champ dans Airtable
-          hasActiveContract: clientRecord.fields.ContratActif || false,
-          amountDue: clientRecord.fields.MontantDu || 0,
-        },
-        { status: 200 },
-      );
+      if (
+        record &&
+        typeof record === "object" &&
+        "id" in record &&
+        "fields" in record &&
+        typeof record.id === "string"
+      ) {
+        return NextResponse.json(
+          { found: true, id: record.id, fields: record.fields },
+          { status: 200 },
+        );
+      }
     }
 
-    // Si aucun client n'est trouvé
     return NextResponse.json(
-      { found: false, message: "Client inconnu" },
+      { found: false, message: "Aucun enregistrement trouvé" },
       { status: 200 },
     );
-  } catch (error: any) {
-    console.error("Erreur Route API Search:", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
+    console.error("Erreur Route API Search:", message);
     return NextResponse.json(
       { error: "Erreur serveur interne" },
       { status: 500 },

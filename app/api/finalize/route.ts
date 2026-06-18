@@ -1,130 +1,198 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import axios from "axios";
 
-// Initialisation de Stripe (pense à mettre ta clé sk_test_... dans ton .env)
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY_TEST!, {
-  apiVersion: "2023-10-16" as any,
-});
+// ── Types ────────────────────────────────────────────────────────────────────
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { customerPhone, customerName, amount } = body;
+interface RequestBody {
+  customerPhone: string;
+  customerName: string;
+  amount: number;
+}
 
-    // Validation rapide des données reçues de Make / Vapi
-    if (!customerPhone || !customerName || !amount) {
-      return NextResponse.json(
-        { error: "Données requises manquantes." },
-        { status: 400 },
-      );
-    }
+interface YouSignSigner {
+  signature_link: string;
+}
 
-    // ──────────────────────────────────────────────────────────────
-    // ÉTAPE 1 : CRÉATION DE LA SESSION DE PAIEMENT STRIPE
-    // ──────────────────────────────────────────────────────────────
-    const stripeSession = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            product_data: {
-              name: `Contrat et Prestation - ${customerName}`,
-            },
-            unit_amount: Math.round(amount * 100), // Stripe prend les montants en centimes
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      // Redirections finales une fois que Stripe a terminé le paiement
-      success_url: "https://tondomaine.com/paiement-reussi",
-      cancel_url: "https://tondomaine.com/paiement-annule",
-    });
+interface YouSignResponse {
+  signers: YouSignSigner[];
+}
 
-    const stripeUrl = stripeSession.url; // Notre lien de paiement cible
+function isRequestBody(body: unknown): body is RequestBody {
+  if (!body || typeof body !== "object") return false;
+  const { customerPhone, customerName, amount } = body as Record<string, unknown>;
+  return (
+    typeof customerPhone === "string" && customerPhone.trim() !== "" &&
+    typeof customerName === "string" && customerName.trim() !== "" &&
+    typeof amount === "number" && amount > 0
+  );
+}
 
-    // ──────────────────────────────────────────────────────────────
-    // ÉTAPE 2 : CRÉATION DU CONTRAT YOUSIGN + REDIRECTION VERS STRIPE
-    // ──────────────────────────────────────────────────────────────
-    const yousignResponse = await axios.post(
-      "https://api-sandbox.yousign.app/v3/signature_requests",
-      {
+function isYouSignResponse(data: unknown): data is YouSignResponse {
+  return (
+    !!data &&
+    typeof data === "object" &&
+    "signers" in data &&
+    Array.isArray((data as YouSignResponse).signers) &&
+    typeof (data as YouSignResponse).signers[0]?.signature_link === "string"
+  );
+}
+
+// ── Env validation ───────────────────────────────────────────────────────────
+
+function getEnv(): {
+  stripeKey: string;
+  yousignKey: string;
+  brevoKey: string;
+} {
+  const stripeKey = process.env.STRIPE_SECRET_KEY_TEST;
+  const yousignKey = process.env.YOUSIGN_API_KEY_SANDBOX;
+  const brevoKey = process.env.BREVO_API_KEY;
+
+  if (!stripeKey || !yousignKey || !brevoKey) {
+    throw new Error("Missing required environment variables");
+  }
+
+  return { stripeKey, yousignKey, brevoKey };
+}
+
+// ── Step helpers ─────────────────────────────────────────────────────────────
+
+async function createStripePaymentLink(
+  stripe: Stripe,
+  customerName: string,
+  amount: number,
+): Promise<string> {
+  // Create a reusable Price, then a Payment Link — no success/cancel URL needed
+  const price = await stripe.prices.create({
+    currency: "eur",
+    unit_amount: Math.round(amount * 100),
+    product_data: {
+      name: `Contrat et Prestation - ${customerName}`,
+    },
+  });
+
+  const paymentLink = await stripe.paymentLinks.create({
+    line_items: [{ price: price.id, quantity: 1 }],
+  });
+
+  return paymentLink.url;
+}
+
+async function createYouSignRequest(
+  yousignKey: string,
+  customerName: string,
+  customerPhone: string,
+  stripeUrl: string,
+): Promise<string> {
+  const response = await fetch(
+    "https://api-sandbox.yousign.app/v3/signature_requests",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${yousignKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         name: `Contrat de prestation - ${customerName}`,
-        delivery_modes: ["none"], // 'none' car on gère nous-mêmes l'envoi de l'URL par SMS via Brevo
+        delivery_modes: ["none"],
         redirect_options: {
-          success: {
-            url: stripeUrl, // ⚡ Le client est automatiquement redirigé vers Stripe dès qu'il signe !
-          },
+          success: { url: stripeUrl }, // Client lands on Stripe right after signing
         },
         signers: [
           {
             info: {
               first_name: customerName,
               last_name: "Client",
-              phone_number: customerPhone, // Format requis : '+33612345678'
+              phone_number: customerPhone,
               locale: "fr",
             },
-            signature_authentication_mode: "no_otp", // Idéal en test pour fluidifier l'appel
+            signature_authentication_mode: "no_otp",
           },
         ],
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error: unknown = await response.json();
+    throw new Error(`YouSign error: ${JSON.stringify(error)}`);
+  }
+
+  const data: unknown = await response.json();
+  if (!isYouSignResponse(data)) throw new Error("Réponse YouSign invalide");
+
+  return data.signers[0].signature_link;
+}
+
+async function sendBrevoSms(
+  brevoKey: string,
+  customerName: string,
+  customerPhone: string,
+  signatureUrl: string,
+): Promise<void> {
+  const response = await fetch(
+    "https://api.brevo.com/v3/transactionalSMS/sms",
+    {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "api-key": brevoKey,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.YOUSIGN_API_KEY_SANDBOX}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    // Extraction du lien de signature unique généré pour ce client
-    const signatureUrl = yousignResponse.data.signers[0].signature_link;
-
-    // ──────────────────────────────────────────────────────────────
-    // ÉTAPE 3 : ENVOI DU SMS GLOBAL VIA BREVO
-    // ──────────────────────────────────────────────────────────────
-    const smsContent = `Bonjour ${customerName}, merci pour votre accord. Veuillez cliquer sur ce lien pour signer votre contrat. Vous serez ensuite redirigé vers notre page de paiement sécurisé : ${signatureUrl}`;
-
-    await axios.post(
-      "https://api.brevo.com/v3/transactionalSMS/sms",
-      {
+      body: JSON.stringify({
         type: "transactional",
-        sender: "ProServices", // Nom de l'expéditeur (11 caractères max alphanumériques)
-        recipient: customerPhone, // Numéro du client
-        content: smsContent,
-      },
-      {
-        headers: {
-          accept: "application/json",
-          "content-type": "application/json",
-          "api-key": process.env.BREVO_API_KEY, // Ta clé Brevo xkeysib-...
-        },
-      },
-    );
+        sender: "ProServices",
+        recipient: customerPhone,
+        content: `Bonjour ${customerName}, merci pour votre accord. Veuillez cliquer sur ce lien pour signer votre contrat. Vous serez ensuite redirigé vers notre page de paiement sécurisé : ${signatureUrl}`,
+      }),
+    },
+  );
 
-    // ──────────────────────────────────────────────────────────────
-    // ÉTAPE 4 : RÉPONSE À MAKE & VAPI
-    // ──────────────────────────────────────────────────────────────
+  if (!response.ok) {
+    const error: unknown = await response.json();
+    throw new Error(`Brevo error: ${JSON.stringify(error)}`);
+  }
+}
+
+// ── Route handler ────────────────────────────────────────────────────────────
+
+export async function POST(request: Request): Promise<NextResponse> {
+  try {
+    const env = getEnv();
+    const body: unknown = await request.json();
+
+    if (!isRequestBody(body)) {
+      return NextResponse.json(
+        { error: "Données requises manquantes ou invalides." },
+        { status: 400 },
+      );
+    }
+
+    const { customerPhone, customerName, amount } = body;
+
+    const stripe = new Stripe(env.stripeKey, { apiVersion: "2026-05-27.dahlia" });
+
+    const stripeUrl = await createStripePaymentLink(stripe, customerName, amount);
+    const signatureUrl = await createYouSignRequest(
+      env.yousignKey,
+      customerName,
+      customerPhone,
+      stripeUrl,
+    );
+    await sendBrevoSms(env.brevoKey, customerName, customerPhone, signatureUrl);
+
     return NextResponse.json(
       {
         status: "success",
-        message:
-          "Lien Stripe lié à Yousign, et SMS envoyé avec succès via Brevo.",
+        message: "Lien de paiement créé, contrat YouSign envoyé, SMS Brevo expédié.",
       },
       { status: 200 },
     );
-  } catch (error: any) {
-    // Log précis des erreurs d'API externes pour débugger rapidement sur Vercel
-    console.error(
-      "Erreur dans le tunnel d'automatisation:",
-      error?.response?.data || error.message,
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
+    console.error("Erreur dans le tunnel d'automatisation:", message);
     return NextResponse.json(
-      {
-        error: "Échec du traitement du tunnel de validation.",
-        details: error?.response?.data || error.message,
-      },
+      { error: "Échec du traitement du tunnel de validation.", details: message },
       { status: 500 },
     );
   }
