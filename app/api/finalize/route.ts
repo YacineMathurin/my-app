@@ -7,16 +7,19 @@ interface RequestBody {
   customerPhone: string;
   customerName: string;
   amount: number;
+  customerEmail: string;
 }
 
 function isRequestBody(body: unknown): body is RequestBody {
   if (!body || typeof body !== "object") return false;
-  const { customerPhone, customerName, amount } = body as Record<
+  const { customerPhone, customerEmail, customerName, amount } = body as Record<
     string,
     unknown
   >;
   return (
     typeof customerPhone === "string" &&
+    typeof customerEmail === "string" &&
+    customerEmail.trim() !== "" &&
     customerPhone.trim() !== "" &&
     typeof customerName === "string" &&
     customerName.trim() !== "" &&
@@ -52,6 +55,8 @@ function getEnv(): Env {
 async function createStripePaymentLink(
   stripe: Stripe,
   customerName: string,
+  customerEmail: string, // 💡 Ajoutez l'email (ou un airtableRecordId)
+  customerPhone: string, // 💡 Ajoutez le numéro de téléphone
   amount: number,
 ): Promise<string> {
   const price = await stripe.prices.create({
@@ -64,6 +69,13 @@ async function createStripePaymentLink(
 
   const paymentLink = await stripe.paymentLinks.create({
     line_items: [{ price: price.id, quantity: 1 }],
+
+    // 💡 PASSEZ LES METADATA POUR MAKE.COM
+    metadata: {
+      customerEmail: customerEmail,
+      customerName: customerName,
+      customerPhone: customerPhone,
+    },
   });
 
   return paymentLink.url;
@@ -74,9 +86,10 @@ async function createYouSignRequest(
   yousignTemplateId: string,
   customerName: string,
   customerPhone: string,
+  customerEmail: string,
   stripeUrl: string,
 ): Promise<string> {
-  // ── Step 1: Create the signature request ──────────────────────────────────
+  // ── Step 1: Create the signature request (no signers here with template_id) ──
   const requestResponse = await fetch(
     "https://api-sandbox.yousign.app/v3/signature_requests",
     {
@@ -87,13 +100,28 @@ async function createYouSignRequest(
       },
       body: JSON.stringify({
         name: `Contrat de prestation - ${customerName}`,
-        delivery_modes: ["none"],
-        redirect_options: {
-          success: { url: stripeUrl },
-        },
-        document_template_ids: [yousignTemplateId],
-        sender: {
-          name: "ProServices",
+        delivery_mode: "none",
+        template_id: yousignTemplateId,
+        timezone: "Europe/Paris",
+
+        // Fix: Use template_placeholders instead of template_signers
+        template_placeholders: {
+          signers: [
+            {
+              label: "client", // Fix: Use 'label' to match your template's placeholder name
+              info: {
+                first_name: customerName,
+                last_name: "Client",
+                email: customerEmail,
+                phone_number: customerPhone,
+                locale: "fr",
+              },
+              signature_authentication_mode: "no_otp",
+              redirect_urls: {
+                success: stripeUrl,
+              },
+            },
+          ],
         },
       }),
     },
@@ -118,38 +146,15 @@ async function createYouSignRequest(
 
   const signatureRequestId = (requestData as { id: string }).id;
 
-  // ── Step 2: Add the signer ────────────────────────────────────────────────
-  const signerResponse = await fetch(
-    `https://api-sandbox.yousign.app/v3/signature_requests/${signatureRequestId}/signers`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${yousignKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        info: {
-          first_name: customerName,
-          last_name: "Client",
-          phone_number: customerPhone,
-          locale: "fr",
-        },
-        signature_authentication_mode: "no_otp",
-      }),
-    },
-  );
-
-  if (!signerResponse.ok) {
-    const error: unknown = await signerResponse.json();
-    throw new Error(`YouSign signer error: ${JSON.stringify(error)}`);
-  }
-
   // ── Step 3: Activate ──────────────────────────────────────────────────────
   const activateResponse = await fetch(
     `https://api-sandbox.yousign.app/v3/signature_requests/${signatureRequestId}/activate`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${yousignKey}` },
+      body: JSON.stringify({
+        sender_id: "fbb46100-4aa7-4b44-bdac-e467167fac8b", // Replace with your actual YouSign User UUID
+      }),
     },
   );
 
@@ -182,38 +187,42 @@ async function createYouSignRequest(
   return (firstSigner as { signature_link: string }).signature_link;
 }
 
-async function sendBrevoSms(
+async function sendBrevoEmail(
   brevoKey: string,
   customerName: string,
-  customerPhone: string,
+  customerEmail: string, // Change parameter from phone to email
   signatureUrl: string,
 ): Promise<void> {
-  const response = await fetch(
-    "https://api.brevo.com/v3/transactionalSMS/sms",
-    {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "content-type": "application/json",
-        "api-key": brevoKey,
-      },
-      body: JSON.stringify({
-        type: "transactional",
-        sender: "ProServices",
-        recipient: customerPhone,
-        content: `Bonjour ${customerName}, merci pour votre accord. Veuillez cliquer sur ce lien pour signer votre contrat. Vous serez ensuite redirigé vers notre page de paiement sécurisé : ${signatureUrl}`,
-      }),
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      "api-key": brevoKey,
     },
-  );
+    body: JSON.stringify({
+      sender: { name: "ProServices", email: "yacinemathurin@gmail.com" }, // Must be a validated sender in your Brevo account
+      to: [{ email: customerEmail, name: customerName }],
+      subject: "Votre contrat est prêt à être signé",
+      textContent: `Bonjour ${customerName}, merci pour votre accord. Veuillez cliquer sur ce lien pour signer votre contrat. Vous serez ensuite redirigé vers notre page de paiement sécurisé : ${signatureUrl}`,
+    }),
+  });
 
   if (!response.ok) {
     const error: unknown = await response.json();
-    throw new Error(`Brevo error: ${JSON.stringify(error)}`);
+    throw new Error(`Brevo Email error: ${JSON.stringify(error)}`);
   }
 }
 
 // ── Route handler ────────────────────────────────────────────────────────────
 
+// curl -X POST http://localhost:3000/api/your-route-name \
+//   -H "Content-Type: application/json" \
+//   -d '{
+//     "customerPhone": "+33612345678",
+//     "customerName": "Jean Dupont",
+//     "amount": 150
+//   }'
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const env = getEnv();
@@ -226,7 +235,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const { customerPhone, customerName, amount } = body;
+    const { customerPhone, customerEmail, customerName, amount } = body;
 
     const stripe = new Stripe(env.stripeKey, {
       apiVersion: "2026-05-27.dahlia",
@@ -235,16 +244,25 @@ export async function POST(request: Request): Promise<NextResponse> {
     const stripeUrl = await createStripePaymentLink(
       stripe,
       customerName,
+      customerEmail,
+      customerPhone,
       amount,
     );
+
     const signatureUrl = await createYouSignRequest(
       env.yousignKey,
       env.yousignTemplateId,
       customerName,
       customerPhone,
+      customerEmail,
       stripeUrl,
     );
-    await sendBrevoSms(env.brevoKey, customerName, customerPhone, signatureUrl);
+    await sendBrevoEmail(
+      env.brevoKey,
+      customerName,
+      customerEmail,
+      signatureUrl,
+    );
 
     return NextResponse.json(
       {
