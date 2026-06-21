@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     };
 
     const response = await calendar.events.insert({
-      calendarId: process.env.GOOGLE_CALENDAR_ID_ENTREPOT,
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
       requestBody: googleEventBody,
     });
 
@@ -58,7 +58,9 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     return NextResponse.json(
-      { error: "Erreur lors de l'insertion en base" },
+      {
+        error: "Erreur lors de l'insertion en base" + (error as Error).message,
+      },
       { status: 500 },
     );
   }

@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
     // 1. VÉRIFICATION DE LA DISPONIBILITÉ (Lecture Google Calendar)
     const listResponse = await calendar.events.list({
-      calendarId: process.env.GOOGLE_CALENDAR_ID_ENTREPOT,
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
       timeMin: startDateTime.toISOString(),
       timeMax: endDateTime.toISOString(),
       singleEvents: true,
@@ -101,6 +101,9 @@ export async function POST(request: Request) {
       message_pour_ia: `Le montant estimé pour le stockage de ${volume_m3} mètres cubes pendant ${duree_semaines} semaines est de ${prixFinalHT} euros hors taxes. Est-ce que cela vous convient pour valider la réservation ?`,
     });
   } catch (error: unknown) {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erreur serveur" + (error as Error).message },
+      { status: 500 },
+    );
   }
 }
