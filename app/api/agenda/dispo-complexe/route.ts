@@ -8,7 +8,8 @@ async function geocode(adresse: string): Promise<[number, number] | null> {
     const json = await res.json();
     if (!json.features || json.features.length === 0) return null;
     return json.features[0].geometry.coordinates;
-  } catch (error) {
+  } catch (error: unknown) {
+    console.error("Erreur de géocodage:", (error as Error).message);
     return null;
   }
 }
@@ -135,7 +136,10 @@ export async function POST(request: Request) {
         devise: "eur",
       },
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Erreur interne" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: "Erreur interne: " + (error as Error).message },
+      { status: 500 },
+    );
   }
 }
