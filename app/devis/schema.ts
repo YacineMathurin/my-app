@@ -1,23 +1,23 @@
-import * as z from "zod";
+// import * as z from "zod";
 
-export const devisSchema = z.object({
-  client_nom: z
-    .string()
-    .min(2, "Le nom du client doit contenir au moins 2 caractères."),
-  type_camion: z.enum(["Frigo", "Plateau", "Benne"], {
-    required_error: "Veuillez sélectionner un type de camion.",
-  }),
-  date: z.string().min(1, "La date de départ est requise."),
-  heure_depart: z.string().min(1, "L'heure de départ est requise."),
-  adresse_depart: z
-    .string()
-    .min(5, "L'adresse de départ doit contenir au moins 5 caractères."),
-  adresse_arrivee: z
-    .string()
-    .min(5, "L'adresse d'arrivée doit contenir au moins 5 caractères."),
-});
+// export const devisSchema = z.object({
+//   client_nom: z
+//     .string()
+//     .min(2, "Le nom du client doit contenir au moins 2 caractères."),
+//   type_camion: z.enum(["Frigo", "Plateau", "Benne"], {
+//     required_error: "Veuillez sélectionner un type de camion.",
+//   }),
+//   date: z.string().min(1, "La date de départ est requise."),
+//   heure_depart: z.string().min(1, "L'heure de départ est requise."),
+//   adresse_depart: z
+//     .string()
+//     .min(5, "L'adresse de départ doit contenir au moins 5 caractères."),
+//   adresse_arrivee: z
+//     .string()
+//     .min(5, "L'adresse d'arrivée doit contenir au moins 5 caractères."),
+// });
 
-export type DevisFormValues = z.infer<typeof devisSchema>;
+// export type DevisFormValues = z.infer<typeof devisSchema>;
 
 export interface DevisResponse {
   success: boolean;

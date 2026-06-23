@@ -3,7 +3,46 @@
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
-import { zodValidator } from "@tanstack/zod-form-adapter";
+
+// ─── Zod v4 compatible validator (replaces @tanstack/zod-form-adapter) ────────
+// function zodValidator<TSchema extends z.ZodTypeAny>(schema: TSchema) {
+//   return (value: unknown): string | undefined => {
+//     const result = schema.safeParse(value);
+//     if (!result.success) return result.error.issues[0]?.message;
+//     return undefined;
+//   };
+// }
+
+// Field-level validator factory for TanStack Form onChange
+function makeFieldValidator<T extends z.ZodTypeAny>(schema: T) {
+  return {
+    onChange: ({ value }: { value: unknown }) => {
+      const result = schema.safeParse(value);
+      if (!result.success) return result.error.issues[0]?.message;
+      return undefined;
+    },
+  };
+}
+
+// Form-level validator factory for TanStack Form
+function makeFormValidator<T extends z.ZodTypeAny>(schema: T) {
+  return {
+    onChange: ({ value }: { value: unknown }) => {
+      const result = schema.safeParse(value);
+      if (!result.success) {
+        return {
+          fields: Object.fromEntries(
+            result.error.issues.map((issue) => [
+              issue.path[0],
+              issue.message,
+            ])
+          ),
+        };
+      }
+      return undefined;
+    },
+  };
+}
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,11 +79,11 @@ import {
 } from "lucide-react";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
+const TRUCK_VALUES = ["Frigo", "Benne", "Plateau", "Citerne", "Fourgon"] as const;
+
 const step1Schema = z.object({
   client_nom: z.string().min(2, "Minimum 2 caractères"),
-  type_camion: z.enum(["Frigo", "Benne", "Plateau", "Citerne", "Fourgon"], {
-    errorMap: () => ({ message: "Veuillez sélectionner un type" }),
-  }),
+  type_camion: z.enum(TRUCK_VALUES, { error: "Veuillez sélectionner un type" }),
   date: z.string().min(1, "La date est requise"),
   heure_depart: z.string().min(1, "L'heure est requise"),
   adresse_depart: z.string().min(5, "Adresse trop courte"),
@@ -59,7 +98,7 @@ const step3Schema = z.object({
 });
 
 type Step1Data = z.infer<typeof step1Schema>;
-type Step3Data = z.infer<typeof step3Schema>;
+type Step3Data = z.infer<typeof step3Schema>; // used by form3 submit value
 type Step = 1 | 2 | 3 | 4 | "error";
 
 interface DispoResponse {
@@ -150,10 +189,10 @@ function StepIndicator({ current }: { current: number }) {
             <div className="flex flex-col items-center gap-1.5">
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${done
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                    : active
-                      ? "bg-white text-blue-600 border-2 border-blue-600 shadow-md shadow-blue-100"
-                      : "bg-slate-100 text-slate-400"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                  : active
+                    ? "bg-white text-blue-600 border-2 border-blue-600 shadow-md shadow-blue-100"
+                    : "bg-slate-100 text-slate-400"
                   }`}
               >
                 {done ? <CheckCircle2 className="h-4 w-4" /> : n}
@@ -198,8 +237,8 @@ function Header() {
             <button
               key={item}
               className={`text-sm px-4 py-2 rounded-lg transition-colors ${i === 1
-                  ? "bg-blue-50 text-blue-700 font-medium"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                ? "bg-blue-50 text-blue-700 font-medium"
+                : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                 }`}
             >
               {item}
@@ -303,8 +342,7 @@ export default function ReservationPage() {
       adresse_depart: "Port de Gennevilliers, Gennevilliers 92230",
       adresse_arrivee: "Place de la Mairie, Clichy 92110",
     },
-    validatorAdapter: zodValidator(),
-    validators: { onChange: step1Schema },
+    validators: makeFormValidator(step1Schema),
     onSubmit: async ({ value }) => {
       setIsCheckingDispo(true);
       setErrorMessage("");
@@ -331,8 +369,7 @@ export default function ReservationPage() {
   // ── Step 3 form ──────────────────────────────────────────────────────────────
   const form3 = useForm({
     defaultValues: { client_email: "", client_telephone: "" },
-    validatorAdapter: zodValidator(),
-    validators: { onChange: step3Schema },
+    validators: makeFormValidator(step3Schema),
     onSubmit: async ({ value }) => {
       if (!step1Data) return;
       setIsFinalizing(true);
@@ -469,7 +506,7 @@ export default function ReservationPage() {
                 <form onSubmit={(e) => { e.preventDefault(); form1.handleSubmit(); }}>
                   <SectionLabel icon={User} label="Informations client" />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <form1.Field name="client_nom" validators={{ onChange: step1Schema.shape.client_nom }}>
+                    <form1.Field name="client_nom" validators={makeFieldValidator(step1Schema.shape.client_nom)}>
                       {(field) => (
                         <div>
                           <Label className="text-sm font-medium text-slate-700 mb-1.5 block">Nom du client</Label>
@@ -488,7 +525,7 @@ export default function ReservationPage() {
                       )}
                     </form1.Field>
 
-                    <form1.Field name="type_camion" validators={{ onChange: step1Schema.shape.type_camion }}>
+                    <form1.Field name="type_camion" validators={makeFieldValidator(step1Schema.shape.type_camion)}>
                       {(field) => (
                         <div>
                           <Label className="text-sm font-medium text-slate-700 mb-1.5 block">Type de camion</Label>
@@ -515,7 +552,7 @@ export default function ReservationPage() {
 
                   <SectionLabel icon={Calendar} label="Date & horaire" />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <form1.Field name="date" validators={{ onChange: step1Schema.shape.date }}>
+                    <form1.Field name="date" validators={makeFieldValidator(step1Schema.shape.date)}>
                       {(field) => (
                         <div>
                           <Label className="text-sm font-medium text-slate-700 mb-1.5 block">Date de la mission</Label>
@@ -528,7 +565,7 @@ export default function ReservationPage() {
                       )}
                     </form1.Field>
 
-                    <form1.Field name="heure_depart" validators={{ onChange: step1Schema.shape.heure_depart }}>
+                    <form1.Field name="heure_depart" validators={makeFieldValidator(step1Schema.shape.heure_depart)}>
                       {(field) => (
                         <div>
                           <Label className="text-sm font-medium text-slate-700 mb-1.5 block">Heure de départ</Label>
@@ -546,7 +583,7 @@ export default function ReservationPage() {
                   <div className="relative space-y-4">
                     <div className="absolute left-[10px] top-12 bottom-12 w-px border-l-2 border-dashed border-slate-200 z-0" />
 
-                    <form1.Field name="adresse_depart" validators={{ onChange: step1Schema.shape.adresse_depart }}>
+                    <form1.Field name="adresse_depart" validators={makeFieldValidator(step1Schema.shape.adresse_depart)}>
                       {(field) => (
                         <div className="relative z-10">
                           <Label className="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
@@ -559,7 +596,7 @@ export default function ReservationPage() {
                       )}
                     </form1.Field>
 
-                    <form1.Field name="adresse_arrivee" validators={{ onChange: step1Schema.shape.adresse_arrivee }}>
+                    <form1.Field name="adresse_arrivee" validators={makeFieldValidator(step1Schema.shape.adresse_arrivee)}>
                       {(field) => (
                         <div className="relative z-10">
                           <Label className="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
@@ -677,7 +714,7 @@ export default function ReservationPage() {
                   <SectionLabel icon={Send} label="Envoi du contrat" />
 
                   <div className="space-y-5">
-                    <form3.Field name="client_email" validators={{ onChange: step3Schema.shape.client_email }}>
+                    <form3.Field name="client_email" validators={makeFieldValidator(step3Schema.shape.client_email)}>
                       {(field) => (
                         <div>
                           <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
@@ -699,7 +736,7 @@ export default function ReservationPage() {
                       )}
                     </form3.Field>
 
-                    <form3.Field name="client_telephone" validators={{ onChange: step3Schema.shape.client_telephone }}>
+                    <form3.Field name="client_telephone" validators={makeFieldValidator(step3Schema.shape.client_telephone)}>
                       {(field) => (
                         <div>
                           <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
