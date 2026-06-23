@@ -4,14 +4,6 @@ import { useState, useCallback } from "react";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 
-// ─── Zod v4 compatible validator (replaces @tanstack/zod-form-adapter) ────────
-function zodValidator<TSchema extends z.ZodTypeAny>(schema: TSchema) {
-  return (value: unknown): string | undefined => {
-    const result = schema.safeParse(value);
-    if (!result.success) return result.error.issues[0]?.message;
-    return undefined;
-  };
-}
 
 // Field-level validator factory for TanStack Form onChange
 function makeFieldValidator<T extends z.ZodTypeAny>(schema: T) {
