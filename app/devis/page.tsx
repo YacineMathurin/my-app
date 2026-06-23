@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 
 // ─── Zod v4 compatible validator (replaces @tanstack/zod-form-adapter) ────────
-// function zodValidator<TSchema extends z.ZodTypeAny>(schema: TSchema) {
-//   return (value: unknown): string | undefined => {
-//     const result = schema.safeParse(value);
-//     if (!result.success) return result.error.issues[0]?.message;
-//     return undefined;
-//   };
-// }
+function zodValidator<TSchema extends z.ZodTypeAny>(schema: TSchema) {
+  return (value: unknown): string | undefined => {
+    const result = schema.safeParse(value);
+    if (!result.success) return result.error.issues[0]?.message;
+    return undefined;
+  };
+}
 
 // Field-level validator factory for TanStack Form onChange
 function makeFieldValidator<T extends z.ZodTypeAny>(schema: T) {
@@ -180,39 +180,71 @@ function RecapItem({
 // ─── Stepper ─────────────────────────────────────────────────────────────────
 function StepIndicator({ current }: { current: number }) {
   return (
-    <div className="flex items-center justify-center gap-0 mb-10">
-      {STEPS.map(({ n, label }, i) => {
-        const done = n < current;
-        const active = n === current;
-        return (
-          <div key={n} className="flex items-center">
-            <div className="flex flex-col items-center gap-1.5">
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${done
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                  : active
-                    ? "bg-white text-blue-600 border-2 border-blue-600 shadow-md shadow-blue-100"
-                    : "bg-slate-100 text-slate-400"
-                  }`}
-              >
-                {done ? <CheckCircle2 className="h-4 w-4" /> : n}
+    <div className="mb-8">
+      {/* Mobile: progress bar */}
+      <div className="flex sm:hidden flex-col gap-2 px-1">
+        <div className="flex items-center justify-between mb-0.5">
+          <span className="text-xs font-semibold text-blue-600">
+            Étape {current}/{STEPS.length} — {STEPS.find((s) => s.n === current)?.label}
+          </span>
+          <span className="text-xs text-slate-400">
+            {Math.round(((current - 1) / (STEPS.length - 1)) * 100)}%
+          </span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500"
+            style={{ width: `${((current - 1) / (STEPS.length - 1)) * 100}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1">
+          {STEPS.map(({ n, label }) => (
+            <span
+              key={n}
+              className={`text-[10px] font-medium transition-colors ${n < current ? "text-blue-400" : n === current ? "text-blue-600" : "text-slate-300"
+                }`}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop: dot stepper */}
+      <div className="hidden sm:flex items-center justify-center">
+        {STEPS.map(({ n, label }, i) => {
+          const done = n < current;
+          const active = n === current;
+          return (
+            <div key={n} className="flex items-center">
+              <div className="flex flex-col items-center gap-1.5">
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${done
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                    : active
+                      ? "bg-white text-blue-600 border-2 border-blue-600 shadow-md shadow-blue-100"
+                      : "bg-slate-100 text-slate-400"
+                    }`}
+                >
+                  {done ? <CheckCircle2 className="h-4 w-4" /> : n}
+                </div>
+                <span
+                  className={`text-[10px] font-medium whitespace-nowrap ${active ? "text-blue-600" : done ? "text-slate-500" : "text-slate-300"
+                    }`}
+                >
+                  {label}
+                </span>
               </div>
-              <span
-                className={`text-[10px] font-medium whitespace-nowrap ${active ? "text-blue-600" : done ? "text-slate-500" : "text-slate-300"
-                  }`}
-              >
-                {label}
-              </span>
+              {i < STEPS.length - 1 && (
+                <div
+                  className={`w-16 h-px mx-2 mb-5 transition-all duration-500 ${n < current ? "bg-blue-400" : "bg-slate-200"
+                    }`}
+                />
+              )}
             </div>
-            {i < STEPS.length - 1 && (
-              <div
-                className={`w-16 h-px mx-2 mb-5 transition-all duration-500 ${n < current ? "bg-blue-400" : "bg-slate-200"
-                  }`}
-              />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -332,6 +364,12 @@ export default function ReservationPage() {
   const [isCheckingDispo, setIsCheckingDispo] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
 
+  // Scroll to card top on step change
+  const goToStep = useCallback((s: Step) => {
+    setStep(s);
+    setTimeout(() => window.scrollTo({ top: 180, behavior: "smooth" }), 50);
+  }, []);
+
   // ── Step 1 form ──────────────────────────────────────────────────────────────
   const form1 = useForm({
     defaultValues: {
@@ -356,10 +394,10 @@ export default function ReservationPage() {
         const data: DispoResponse = await res.json();
         setStep1Data(value);
         setDispoResponse(data);
-        setStep(2);
+        goToStep(2);
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : "Une erreur est survenue");
-        setStep("error");
+        goToStep("error");
       } finally {
         setIsCheckingDispo(false);
       }
@@ -380,10 +418,10 @@ export default function ReservationPage() {
           body: JSON.stringify({ ...step1Data, ...value }),
         });
         if (!res.ok) throw new Error(`Erreur serveur : ${res.status}`);
-        setStep(4);
+        goToStep(4);
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : "Erreur lors de la finalisation");
-        setStep("error");
+        goToStep("error");
       } finally {
         setIsFinalizing(false);
       }
@@ -400,85 +438,14 @@ export default function ReservationPage() {
   };
 
   // ── Step 4 — Success ─────────────────────────────────────────────────────────
-  if (step === 4) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center p-6 pt-24">
-          <div className="w-full max-w-md text-center">
-            <div className="mx-auto mb-6 relative">
-              <div className="flex h-24 w-24 mx-auto items-center justify-center rounded-full bg-green-100">
-                <CheckCircle2 className="h-12 w-12 text-green-600" />
-              </div>
-              <div className="absolute -right-1 -top-1 h-6 w-6 rounded-full bg-green-400 animate-ping opacity-30" />
-            </div>
-            <Badge className="mb-4 bg-green-50 text-green-700 border-green-200">Mission confirmée</Badge>
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Contrat envoyé !</h1>
-            <p className="text-slate-500 leading-relaxed mb-8">
-              Le contrat électronique a été transmis à{" "}
-              <span className="font-semibold text-slate-700">{step1Data?.client_nom}</span>.
-              Le client recevra une notification pour signature.
-            </p>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-8 text-left">
-              <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-3">Résumé</p>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Client</span>
-                  <span className="font-medium text-slate-800">{step1Data?.client_nom}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Transport</span>
-                  <span className="font-medium text-slate-800">{TRUCK_ICONS[step1Data?.type_camion ?? ""]} {step1Data?.type_camion}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Date</span>
-                  <span className="font-medium text-slate-800">{step1Data?.date} à {step1Data?.heure_depart}</span>
-                </div>
-                {dispoResponse?.paiement?.montant_euros && (
-                  <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
-                    <span className="text-slate-500 font-medium">Total</span>
-                    <span className="font-bold text-blue-700">{dispoResponse.paiement.montant_euros} €</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <Button onClick={reset} className="gap-2 bg-blue-600 hover:bg-blue-700 h-11 px-8 rounded-xl">
-              <ArrowRight className="h-4 w-4" />
-              Nouvelle réservation
-            </Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  // ── Unified layout ───────────────────────────────────────────────────────────
+  const currentStepNum = typeof step === "number" ? step : step === "error" ? 1 : 4;
 
-  // ── Error ────────────────────────────────────────────────────────────────────
-  if (step === "error") {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center p-6 pt-24">
-          <div className="w-full max-w-md text-center">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
-              <AlertCircle className="h-10 w-10 text-red-500" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">Une erreur est survenue</h1>
-            <p className="text-slate-500 mb-8 text-sm">{errorMessage}</p>
-            <Button onClick={reset} variant="outline" className="rounded-xl">Réessayer</Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // ── Layout shell ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Header />
 
-      <main className="flex-1 pt-24 pb-16 px-4">
+      <main className="flex-1 pt-28 pb-16 px-4">
         {/* Hero */}
         <div className="mx-auto max-w-2xl mb-8 text-center">
           <Badge className="mb-4 bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-50">
@@ -492,9 +459,9 @@ export default function ReservationPage() {
           </p>
         </div>
 
-        {/* Stepper */}
+        {/* Stepper — always visible */}
         <div className="mx-auto max-w-2xl">
-          <StepIndicator current={typeof step === "number" ? step : 1} />
+          <StepIndicator current={currentStepNum} />
 
           {/* Card */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -690,10 +657,10 @@ export default function ReservationPage() {
                 )}
 
                 <div className="flex gap-3 pt-8">
-                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11 rounded-xl gap-2">
+                  <Button variant="outline" onClick={() => goToStep(1)} className="flex-1 h-11 rounded-xl gap-2">
                     <ArrowLeft className="h-4 w-4" /> Modifier
                   </Button>
-                  <Button onClick={() => setStep(3)} className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 rounded-xl gap-2 font-medium">
+                  <Button onClick={() => goToStep(3)} className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 rounded-xl gap-2 font-medium">
                     Continuer <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -785,7 +752,7 @@ export default function ReservationPage() {
                   </div>
 
                   <div className="flex gap-3 pt-8">
-                    <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1 h-11 rounded-xl gap-2">
+                    <Button type="button" variant="outline" onClick={() => goToStep(2)} className="flex-1 h-11 rounded-xl gap-2">
                       <ArrowLeft className="h-4 w-4" /> Retour
                     </Button>
                     <form3.Subscribe selector={(s) => s.canSubmit}>
@@ -805,6 +772,64 @@ export default function ReservationPage() {
                     En continuant, vous acceptez l&apos;envoi d&apos;un contrat électronique signable en ligne.
                   </p>
                 </form>
+              </div>
+            )}
+
+            {/* ════════════ STEP 4 — Succès ════════════ */}
+            {step === 4 && (
+              <div className="p-8 text-center">
+                <div className="mx-auto mb-6 relative w-fit">
+                  <div className="flex h-20 w-20 mx-auto items-center justify-center rounded-full bg-green-100">
+                    <CheckCircle2 className="h-10 w-10 text-green-600" />
+                  </div>
+                  <div className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-green-400 animate-ping opacity-30" />
+                </div>
+                <Badge className="mb-4 bg-green-50 text-green-700 border-green-200">Mission confirmée</Badge>
+                <h2 className="text-xl font-bold text-slate-900 mb-2">Contrat envoyé !</h2>
+                <p className="text-slate-500 text-sm leading-relaxed mb-8">
+                  Le contrat électronique a été transmis à{" "}
+                  <span className="font-semibold text-slate-700">{step1Data?.client_nom}</span>.{" "}
+                  Le client recevra une notification pour signature.
+                </p>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-8 text-left">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Résumé</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Client</span>
+                      <span className="font-medium text-slate-800">{step1Data?.client_nom}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Transport</span>
+                      <span className="font-medium text-slate-800">{TRUCK_ICONS[step1Data?.type_camion ?? ""]} {step1Data?.type_camion}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Date</span>
+                      <span className="font-medium text-slate-800">{step1Data?.date} à {step1Data?.heure_depart}</span>
+                    </div>
+                    {dispoResponse?.paiement?.montant_euros && (
+                      <div className="flex justify-between pt-2 border-t border-slate-100 mt-1">
+                        <span className="text-slate-500 font-semibold">Total</span>
+                        <span className="font-bold text-blue-700">{dispoResponse.paiement.montant_euros} €</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Button onClick={reset} className="gap-2 bg-blue-600 hover:bg-blue-700 h-11 px-8 rounded-xl">
+                  <ArrowRight className="h-4 w-4" />
+                  Nouvelle réservation
+                </Button>
+              </div>
+            )}
+
+            {/* ════════════ ERROR ════════════ */}
+            {step === "error" && (
+              <div className="p-8 text-center">
+                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
+                  <AlertCircle className="h-10 w-10 text-red-500" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 mb-2">Une erreur est survenue</h2>
+                <p className="text-slate-500 text-sm mb-8">{errorMessage}</p>
+                <Button onClick={reset} variant="outline" className="rounded-xl">Réessayer</Button>
               </div>
             )}
           </div>
