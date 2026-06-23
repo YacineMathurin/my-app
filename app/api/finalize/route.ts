@@ -112,7 +112,13 @@ async function createYouSignRequest(
         delivery_mode: "none",
         template_id: yousignTemplateId,
         timezone: "Europe/Paris",
-
+        // custom_fields: {
+        //   dateDebut: "2026-06-22",
+        //   heureDepart: "10:00",
+        //   heureRetourEstimee: "12:16",
+        //   distanceTotalEstimeKm: "10",
+        //   typeCamion: "Frigo",
+        // },
         // Fix: Use template_placeholders instead of template_signers
         template_placeholders: {
           signers: [
