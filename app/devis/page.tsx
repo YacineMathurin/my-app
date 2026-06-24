@@ -69,7 +69,6 @@ import {
   Euro,
   Send,
 } from "lucide-react";
-import PdfPreview from "./PdfPreview";
 import PreviewModal from "./PreviewModal";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────

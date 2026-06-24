@@ -1,8 +1,8 @@
 "use client";
 import { useState } from 'react';
-import { FileText, X, Printer, Download } from 'lucide-react';
+import { FileText, X, Printer } from 'lucide-react';
 
-export default function PreviewModal({ data }: { data: any }) {
+export default function PreviewModal({ }) {
     const [isOpen, setIsOpen] = useState(false);
 
     return (

@@ -16,7 +16,7 @@ export async function GET() {
     browser = await puppeteer.launch({
       args: isLocal ? [] : chromium.args,
       executablePath: executablePath,
-      headless: isLocal ? "new" : chromium.headless,
+      headless: true,
     });
 
     const page = await browser.newPage();
@@ -104,7 +104,7 @@ export async function GET() {
 `;
 
     // Dans ton API Route
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    await page.setContent(htmlContent, { waitUntil: "domcontentloaded" });
 
     // 3. Génération du PDF
     const pdfBuffer = Buffer.from(
