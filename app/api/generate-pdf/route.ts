@@ -6,16 +6,17 @@ export async function GET() {
   let browser = null;
 
   try {
-    // Détection si on est sur Vercel (production) ou en local
+    // 1. Configuration pour Vercel (Production)
     const isLocal = process.env.NODE_ENV === "development";
 
     const executablePath = isLocal
-      ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" // Chemin de Chrome sur votre PC
+      ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
       : await chromium.executablePath();
 
     browser = await puppeteer.launch({
       args: isLocal ? [] : chromium.args,
       executablePath: executablePath,
+      // Utilise "new" ou true. chromium.headless n'est plus nécessaire ici.
       headless: true,
     });
 
