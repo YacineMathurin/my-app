@@ -69,6 +69,8 @@ import {
   Euro,
   Send,
 } from "lucide-react";
+import PdfPreview from "./PdfPreview";
+import PreviewModal from "./PreviewModal";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 const TRUCK_VALUES = ["Frigo", "Benne", "Plateau", "Citerne", "Fourgon"] as const;
@@ -684,6 +686,29 @@ export default function ReservationPage() {
                 {dispoResponse?.paiement?.montant_euros && (
                   <>
                     <Separator className="my-4" />
+                    <div className="mt-6">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        Aperçu de votre OT :
+                      </h3>
+
+                      {/* 2. Remplace PdfPreview par PreviewModal */}
+                      <PreviewModal data={{
+                        transporteur: { nom: "Transports pro" },
+                        client: { nom: "Client Nom" },
+                        prestation: {
+                          marchandise: dispoResponse.marchandise,
+                          trajet: dispoResponse.trajet
+                        },
+                        paiement: { total_ttc: dispoResponse.paiement.montant_euros }
+                      }} />
+
+                      <p className="mt-3 text-xs text-gray-500 italic">
+                        * Ce document est une simulation. Le document définitif sera scellé
+                        et envoyé par mail après signature électronique.
+                      </p>
+                    </div>
+
+                    <Separator className="my-4" />
                     <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600" aria-hidden="true">
@@ -698,6 +723,7 @@ export default function ReservationPage() {
                         {dispoResponse.paiement.montant_euros} <span className="text-lg font-semibold">€</span>
                       </p>
                     </div>
+
                   </>
                 )}
 
@@ -834,7 +860,7 @@ export default function ReservationPage() {
                           {isFinalizing ? (
                             <><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Envoi…</>
                           ) : (
-                            <><FileSignature className="h-5 w-5" aria-hidden="true" /> Envoyer le contrat</>
+                            <><FileSignature className="h-5 w-5" aria-hidden="true" /> Payer</>
                           )}
                         </Button>
                       )}
