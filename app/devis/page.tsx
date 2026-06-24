@@ -691,7 +691,7 @@ export default function ReservationPage() {
                       </h3>
 
                       {/* 2. Remplace PdfPreview par PreviewModal */}
-                      <PreviewModal data={{
+                       <PreviewModal data={{
                         transporteur: { nom: "Transports pro" },
                         client: { nom: "Client Nom" },
                         prestation: {

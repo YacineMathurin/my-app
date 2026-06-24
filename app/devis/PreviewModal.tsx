@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { FileText, X, Printer } from 'lucide-react';
 
-export default function PreviewModal({ }) {
+export default function PreviewModal({ data }: { data: unknown }) {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
