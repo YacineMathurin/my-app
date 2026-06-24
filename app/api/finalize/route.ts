@@ -90,6 +90,16 @@ async function createStripePaymentLink(
   return paymentLink.url;
 }
 
+/*
+await createYouSignRequest(
+  key, templateId, name, phone, email, stripeUrl,
+  [
+    { documentId: "", label: "price",        text: "1 200,00 €",  page: 1, x: 200, y: 400 },
+    { documentId: "", label: "service_date", text: "01/09/2025",  page: 1, x: 200, y: 450 },
+  ]
+);
+*/
+
 async function createYouSignRequest(
   yousignKey: string,
   yousignTemplateId: string,
@@ -97,8 +107,16 @@ async function createYouSignRequest(
   customerPhone: string,
   customerEmail: string,
   stripeUrl: string,
+  customFields: {
+    documentId: string;
+    label: string;
+    text: string;
+    page: number;
+    x: number;
+    y: number;
+  }[],
 ): Promise<string> {
-  // ── Step 1: Create the signature request (no signers here with template_id) ──
+  // ── Step 1: Create the signature request ─────────────────────────────────
   const requestResponse = await fetch(
     "https://api-sandbox.yousign.app/v3/signature_requests",
     {
@@ -112,18 +130,10 @@ async function createYouSignRequest(
         delivery_mode: "none",
         template_id: yousignTemplateId,
         timezone: "Europe/Paris",
-        // custom_fields: {
-        //   dateDebut: "2026-06-22",
-        //   heureDepart: "10:00",
-        //   heureRetourEstimee: "12:16",
-        //   distanceTotalEstimeKm: "10",
-        //   typeCamion: "Frigo",
-        // },
-        // Fix: Use template_placeholders instead of template_signers
         template_placeholders: {
           signers: [
             {
-              label: "client", // Fix: Use 'label' to match your template's placeholder name
+              label: "client",
               info: {
                 first_name: customerName,
                 last_name: "Client",
@@ -132,9 +142,7 @@ async function createYouSignRequest(
                 locale: "fr",
               },
               signature_authentication_mode: "no_otp",
-              redirect_urls: {
-                success: stripeUrl,
-              },
+              redirect_urls: { success: stripeUrl },
             },
           ],
         },
@@ -149,17 +157,38 @@ async function createYouSignRequest(
     );
   }
 
-  const requestData: unknown = await requestResponse.json();
-  if (
-    !requestData ||
-    typeof requestData !== "object" ||
-    !("id" in requestData) ||
-    typeof (requestData as Record<string, unknown>).id !== "string"
-  ) {
-    throw new Error("Réponse YouSign signature_request invalide");
-  }
+  const requestData = (await requestResponse.json()) as { id: string };
+  const signatureRequestId = requestData.id;
 
-  const signatureRequestId = (requestData as { id: string }).id;
+  // ── Step 2: Populate Read-Only Text Fields ────────────────────────────────
+  // Must happen after creation but before activation.
+  // You need the documentId from the template — fetch it first:
+  const docsResponse = await fetch(
+    `https://api-sandbox.yousign.app/v3/signature_requests/${signatureRequestId}/documents`,
+    { headers: { Authorization: `Bearer ${yousignKey}` } },
+  );
+  const docsData = (await docsResponse.json()) as { id: string }[];
+  const documentId = docsData[0].id; // adjust if you have multiple docs
+
+  for (const field of customFields) {
+    await fetch(
+      `https://api-sandbox.yousign.app/v3/signature_requests/${signatureRequestId}/documents/${documentId}/fields`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${yousignKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "read-only-text-field", // exact type name
+          page: field.page,
+          x: field.x,
+          y: field.y,
+          text: field.text,
+        }),
+      },
+    );
+  }
 
   // ── Step 3: Activate ──────────────────────────────────────────────────────
   const activateResponse = await fetch(
@@ -167,9 +196,6 @@ async function createYouSignRequest(
     {
       method: "POST",
       headers: { Authorization: `Bearer ${yousignKey}` },
-      body: JSON.stringify({
-        sender_id: "fbb46100-4aa7-4b44-bdac-e467167fac8b", // Replace with your actual YouSign User UUID
-      }),
     },
   );
 
@@ -178,28 +204,10 @@ async function createYouSignRequest(
     throw new Error(`YouSign activate error: ${JSON.stringify(error)}`);
   }
 
-  const activateData: unknown = await activateResponse.json();
-  if (
-    !activateData ||
-    typeof activateData !== "object" ||
-    !("signers" in activateData) ||
-    !Array.isArray((activateData as { signers: unknown[] }).signers)
-  ) {
-    throw new Error("Réponse YouSign activate invalide");
-  }
-
-  const firstSigner: unknown = (activateData as { signers: unknown[] })
-    .signers[0];
-  if (
-    !firstSigner ||
-    typeof firstSigner !== "object" ||
-    !("signature_link" in firstSigner) ||
-    typeof (firstSigner as Record<string, unknown>).signature_link !== "string"
-  ) {
-    throw new Error("signature_link manquant après activation");
-  }
-
-  return (firstSigner as { signature_link: string }).signature_link;
+  const activateData = (await activateResponse.json()) as {
+    signers: { signature_link: string }[];
+  };
+  return activateData.signers[0].signature_link;
 }
 
 async function sendBrevoEmail(
@@ -273,6 +281,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       customerPhone,
       customerEmail,
       stripeUrl,
+      [],
     );
     await sendBrevoEmail(
       env.brevoKey,
