@@ -368,7 +368,7 @@ const OTDocument = () => (
         </View>
         <View style={{ alignItems: "flex-end", gap: 3 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 30 }}>
-            <Text style={styles.otMeta}>Date d'émission</Text>
+            <Text style={styles.otMeta}>Date d&apos;émission</Text>
             <Text style={styles.otMetaVal}>{DATE_EMISSION}</Text>
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 30 }}>
@@ -397,7 +397,7 @@ const OTDocument = () => (
             <Text style={styles.infoLineMuted}>{transporter.email}</Text>
           </View>
           <View style={styles.infoBox}>
-            <Text style={styles.infoBoxTitle}>Donneur d'ordre</Text>
+            <Text style={styles.infoBoxTitle}>Donneur d&apos;ordre</Text>
             <Text style={[styles.infoLine, { fontFamily: "Helvetica-Bold" }]}>{client.name}</Text>
             <Text style={styles.infoLineMuted}>Contact : {client.contact}</Text>
             <Text style={styles.infoLineMuted}>{client.address}</Text>
@@ -439,7 +439,7 @@ const OTDocument = () => (
             <Text style={[styles.tableHeadCell, styles.colTotal]}>Total HT</Text>
           </View>
           {lines.map((l, i) => (
-            <View key={i} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
+            <View key={i} style={[styles.tableRow, ...(i % 2 === 1 ? [styles.tableRowAlt] : [])]}>
               <Text style={[styles.tableCell, styles.colRef, { color: C.muted }]}>{l.ref}</Text>
               <Text style={[styles.tableCell, styles.colDesc]}>{l.desc}</Text>
               <Text style={[styles.tableCell, styles.colQty]}>{l.qty}</Text>
@@ -476,8 +476,8 @@ const OTDocument = () => (
             <Text style={styles.instructionsTitle}>Instructions de transport</Text>
             <Text style={styles.instructionsText}>
               Marchandises générales — pas de matières dangereuses. Livraison en rez-de-chaussée, hayon
-              obligatoire. Contacter le destinataire 1h avant l'arrivée. Documents de livraison à faire
-              signer par le réceptionnaire et à retourner à l'expéditeur dans les 48h.
+              obligatoire. Contacter le destinataire 1h avant l&apos;arrivée. Documents de livraison à faire
+              signer par le réceptionnaire et à retourner à l&apos;expéditeur dans les 48h.
             </Text>
           </View>
 
