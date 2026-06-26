@@ -10,7 +10,6 @@ async function createStripePaymentLink(
   customerEmail: string,
   customerPhone: string,
   amount: number,
-  recordId: string,
 ): Promise<string> {
   const price = await stripe.prices.create({
     currency: "eur",
@@ -28,7 +27,6 @@ async function createStripePaymentLink(
       customerName,
       customerPhone,
       content: `Votre reservation pour la prestation de services. Montant: ${amount} EUR est validés. Merci pour votre confiance!`,
-      recordId,
       // Sender
       senderName: "AutomatPro",
       senderPhone: "+33612345678",
@@ -43,21 +41,14 @@ async function createStripePaymentLink(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { customerName, customerEmail, customerPhone, amount, recordId } =
-      body;
+    const { customerName, customerEmail, customerPhone, amount } = body;
 
     // Validation
-    if (
-      !customerName ||
-      !customerEmail ||
-      !customerPhone ||
-      !amount ||
-      !recordId
-    ) {
+    if (!customerName || !customerEmail || !customerPhone || !amount) {
       return NextResponse.json(
         {
           error:
-            "Champs requis manquants : customerName, customerEmail, customerPhone, amount, recordId.",
+            "Champs requis manquants : customerName, customerEmail, customerPhone, amount.",
         },
         { status: 400 },
       );
@@ -75,7 +66,6 @@ export async function POST(req: NextRequest) {
       customerEmail,
       customerPhone,
       amount,
-      recordId,
     );
 
     return NextResponse.json({ url }, { status: 201 });

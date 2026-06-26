@@ -44,6 +44,9 @@ export default function PreviewModal({ data }: { data: unknown }) {
                                 src={`/api/generate-pdf`}
                                 className="w-full h-full border-0"
                                 title="Aperçu PDF"
+                                loading="lazy"
+                                // Optionnel : permet d'éviter que le PDF ne se mette à zoomer bizarrement
+                                style={{ minHeight: '400px' }}
                             />
                         </div>
                     </div>
