@@ -1,4 +1,3 @@
-// Ton fichier Webhook (route.ts)
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { validerReservation } from "@/lib/booking"; // <--- Fonction logique déplacée
@@ -35,14 +34,15 @@ export async function POST(req: Request) {
 
     if (metadata) {
       try {
-        // 1. Appel direct à la fonction logique (pas de fetch réseau)
         await validerReservation({
           customerName: metadata.customerName,
           typeCamion: metadata.typeCamion,
-          sessionId: session.id, // Toujours bon de tracer l'ID Stripe
+          dateDepart: metadata.dateDepart,
+          heureDepart: metadata.heureDepart,
+          heureArrive: metadata.heureArrive,
+          prix: metadata.prix,
         });
 
-        // 2. Envoi email
         await sendBrevoEmail(
           process.env.BREVO_API_KEY!,
           metadata.customerName || "Client",
