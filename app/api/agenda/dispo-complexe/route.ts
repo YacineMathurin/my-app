@@ -16,12 +16,12 @@ async function geocode(adresse: string): Promise<[number, number] | null> {
 
 /*
   {
-    "client_nom": "Eiffage",
-    "type_camion": "Frigo",
+    "customerName": "Eiffage",
+    "typeCamion": "Frigo",
     "date": "2026-06-22",
-    "heure_depart": "10:00",
-    "adresse_depart": "Port de Gennevilliers, Gennevilliers 92230",
-    "adresse_arrivee": "Place de la Mairie, Clichy 92110"
+    "heureDepart": "10:00",
+    "adresseDepart": "Port de Gennevilliers, Gennevilliers 92230",
+    "adressArrivee": "Place de la Mairie, Clichy 92110"
   }
 */
 
@@ -29,22 +29,30 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
-      client_nom,
-      type_camion,
+      customerName,
+      typeCamion,
       date,
-      heure_depart,
-      adresse_depart,
-      adresse_arrivee,
+      heureDepart,
+      adressDepart,
+      adressArrive,
     } = body;
 
     if (
-      !client_nom ||
-      !type_camion ||
+      !customerName ||
+      !typeCamion ||
       !date ||
-      !heure_depart ||
-      !adresse_depart ||
-      !adresse_arrivee
+      !heureDepart ||
+      !adressDepart ||
+      !adressArrive
     ) {
+      console.error("Données manquantes dans la requête:", {
+        customerName,
+        typeCamion,
+        date,
+        heureDepart,
+        adressDepart,
+        adressArrive,
+      });
       return NextResponse.json(
         { error: "Données manquantes." },
         { status: 400 },
@@ -52,8 +60,8 @@ export async function POST(request: Request) {
     }
 
     // 1. Géocodage et OSRM (Gratuit)
-    const gpsDepart = await geocode(adresse_depart);
-    const gpsArrivee = await geocode(adresse_arrivee);
+    const gpsDepart = await geocode(adressDepart);
+    const gpsArrivee = await geocode(adressArrive);
 
     if (!gpsDepart || !gpsArrivee) {
       return NextResponse.json(
@@ -78,7 +86,7 @@ export async function POST(request: Request) {
       tempsConduiteHeures * 2 + tempsFixesMinutes / 60;
 
     // 3. Heure de retour estimée au dépôt
-    const dateDepart = new Date(`${date}T${heure_depart}:00`);
+    const dateDepart = new Date(`${date}T${heureDepart}:00`);
     const dateRetourDepot = new Date(
       dateDepart.getTime() + tempsTotalMobilisationHeures * 60 * 60 * 1000,
     );
@@ -88,7 +96,7 @@ export async function POST(request: Request) {
       .substring(0, 5);
 
     // 4. Détection Horaire Bâtard
-    const heureDepartNombre = parseInt(heure_depart.split(":")[0]);
+    const heureDepartNombre = parseInt(heureDepart.split(":")[0]);
     const heureRetourNombre = dateRetourDepot.getHours();
     const estHoraireBatard = heureDepartNombre >= 9 && heureRetourNombre > 13;
 
@@ -111,10 +119,10 @@ export async function POST(request: Request) {
     const clientsVIP = JSON.parse(process.env.NEXT_PUBLIC_CLIENTS_VIP || "{}");
     let remiseAppliquee = 0;
 
-    if (clientsVIP[client_nom]) {
+    if (clientsVIP[customerName]) {
       remiseAppliquee = estHoraireBatard
-        ? clientsVIP[client_nom].remise_batarde || 0
-        : clientsVIP[client_nom].remise_standard || 0;
+        ? clientsVIP[customerName].remise_batarde || 0
+        : clientsVIP[customerName].remise_standard || 0;
     }
     const prixFinal = prixBrut * (1 - remiseAppliquee);
 
@@ -122,10 +130,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       devis_valide: {
-        client_nom,
-        type_camion,
+        customerName,
+        typeCamion,
         date,
-        heure_depart,
+        heureDepart,
         heure_retour_estimee: heureRetourStr,
         distance_total_estimée_km: Math.round(distanceKm * 2),
         structure_tarifaire: structureTarifaire,

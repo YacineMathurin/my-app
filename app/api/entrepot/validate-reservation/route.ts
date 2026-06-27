@@ -15,29 +15,29 @@ const calendar: calendar_v3.Calendar = google.calendar({
 /*
 {
   "client_nom": "Client Test Entrepôt",
-  "volume_m3": 45,
-  "date_arrivee": "2026-07-10",
-  "duree_semaines": 3,
-  "prix_paye": 213.50
+  "volume": 45,
+  "dateArrivee": "2026-07-10",
+  "dureSemaines": 3,
+  "prix": 213.50
 }
 */
 
 export async function POST(request: Request) {
   try {
     // Make (Scénario C) envoie les données issues de Stripe
-    const { client_nom, volume_m3, date_arrivee, duree_semaines, prix_paye } =
+    const { customerName, volume, dateArrivee, dureSemaines, prix } =
       await request.json();
 
-    const startDateTime = new Date(`${date_arrivee}T08:00:00`);
+    const startDateTime = new Date(`${dateArrivee}T08:00:00`);
     const endDateTime = new Date(
-      startDateTime.getTime() + duree_semaines * 7 * 24 * 60 * 60 * 1000,
+      startDateTime.getTime() + dureSemaines * 7 * 24 * 60 * 60 * 1000,
     );
     endDateTime.setHours(18, 0, 0);
 
     // INSERTION DIRECTE DANS L'AGENDA
     const googleEventBody: calendar_v3.Schema$Event = {
-      summary: `[${volume_m3}m³] - ${client_nom}`,
-      description: `✅ PAYÉ ET RÉSÉRVÉ\n\nClient : ${client_nom}\nVolume occupé : ${volume_m3} m³\nDurée : ${duree_semaines} semaines\nPrix payé : ${prix_paye} € HT`,
+      summary: `[${volume}m³] - ${customerName}`,
+      description: `✅ PAYÉ ET RÉSÉRVÉ\n\nClient : ${customerName}\nVolume occupé : ${volume} m³\nDurée : ${dureSemaines} semaines\nPrix payé : ${prix} € HT`,
       start: {
         dateTime: startDateTime.toISOString(),
         timeZone: "Europe/Paris",

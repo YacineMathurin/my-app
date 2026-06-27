@@ -75,17 +75,17 @@ import PreviewModal from "./PreviewModal";
 const TRUCK_VALUES = ["Frigo", "Benne", "Plateau", "Citerne", "Fourgon"] as const;
 
 const step1Schema = z.object({
-  client_nom: z.string().min(2, "Minimum 2 caractères"),
-  type_camion: z.enum(TRUCK_VALUES, { error: "Veuillez sélectionner un type" }),
+  customerName: z.string().min(2, "Minimum 2 caractères"),
+  typeCamion: z.enum(TRUCK_VALUES, { error: "Veuillez sélectionner un type" }),
   date: z.string().min(1, "La date est requise"),
-  heure_depart: z.string().min(1, "L'heure est requise"),
-  adresse_depart: z.string().min(5, "Adresse trop courte"),
-  adresse_arrivee: z.string().min(5, "Adresse trop courte"),
+  heureDepart: z.string().min(1, "L'heure est requise"),
+  adressDepart: z.string().min(5, "Adresse trop courte"),
+  adressArrive: z.string().min(5, "Adresse trop courte"),
 });
 
 const step3Schema = z.object({
-  client_email: z.string().email("Adresse e-mail invalide"),
-  client_telephone: z
+  customerEmail: z.string().email("Adresse e-mail invalide"),
+  customerPhone: z
     .string()
     .regex(/^(\+33|0)[1-9](\d{2}){4}$/, "Numéro de téléphone invalide"),
 });
@@ -96,9 +96,9 @@ type Step = 1 | 2 | 3 | 4 | "error";
 
 interface DispoResponse {
   devis_valide?: {
-    type_camion: string;
+    typeCamion: string;
     date: string;
-    heure_depart: string;
+    heureDepart: string;
     distance_total_estimée_km?: string | number;
   };
   paiement?: { montant_euros: string | number };
@@ -375,12 +375,12 @@ export default function ReservationPage() {
 
   const form1 = useForm({
     defaultValues: {
-      client_nom: "Eiffage",
-      type_camion: "Frigo" as Step1Data["type_camion"],
+      customerName: "Eiffage",
+      typeCamion: "Frigo" as Step1Data["typeCamion"],
       date: "2026-06-22",
-      heure_depart: "10:00",
-      adresse_depart: "Port de Gennevilliers, Gennevilliers 92230",
-      adresse_arrivee: "Place de la Mairie, Clichy 92110",
+      heureDepart: "10:00",
+      adressDepart: "Port de Gennevilliers, Gennevilliers 92230",
+      adressArrive: "Place de la Mairie, Clichy 92110",
     },
     validators: makeFormValidator(step1Schema),
     onSubmit: async ({ value }) => {
@@ -407,7 +407,7 @@ export default function ReservationPage() {
   });
 
   const form3 = useForm({
-    defaultValues: { client_email: "", client_telephone: "" },
+    defaultValues: { customerEmail: "", customerPhone: "" },
     validators: makeFormValidator(step3Schema),
     onSubmit: async ({ value }) => {
       if (!step1Data) return;
@@ -416,7 +416,7 @@ export default function ReservationPage() {
         const res = await fetch("/api/finalize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...step1Data, ...value }),
+          body: JSON.stringify({ ...step1Data, ...value, amount: dispoResponse?.paiement?.montant_euros }),
         });
         if (!res.ok) throw new Error(`Erreur serveur : ${res.status}`);
         goToStep(4);
@@ -471,23 +471,23 @@ export default function ReservationPage() {
                 <form onSubmit={(e) => { e.preventDefault(); form1.handleSubmit(); }} noValidate>
                   <SectionLabel icon={User} label="Informations client" />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <form1.Field name="client_nom" validators={makeFieldValidator(step1Schema.shape.client_nom)}>
+                    <form1.Field name="customerName" validators={makeFieldValidator(step1Schema.shape.customerName)}>
                       {(field) => (
                         <div>
-                          <Label htmlFor="client_nom" className="text-base font-medium text-slate-700 mb-2 block">
+                          <Label htmlFor="customerName" className="text-base font-medium text-slate-700 mb-2 block">
                             Nom du client
                           </Label>
                           <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" aria-hidden="true" />
                             {/* h-12 = 48px, zone de tap confortable sur mobile */}
                             <Input
-                              id="client_nom"
+                              id="customerName"
                               placeholder="Ex : Eiffage"
                               value={field.state.value}
                               onChange={(e) => field.handleChange(e.target.value)}
                               onBlur={field.handleBlur}
                               className="pl-10 h-12 text-base border-slate-200 focus:border-blue-400"
-                              aria-describedby={field.state.meta.errors.length ? "client_nom_error" : undefined}
+                              aria-describedby={field.state.meta.errors.length ? "customerName_error" : undefined}
                               aria-invalid={field.state.meta.errors.length > 0}
                             />
                           </div>
@@ -496,16 +496,16 @@ export default function ReservationPage() {
                       )}
                     </form1.Field>
 
-                    <form1.Field name="type_camion" validators={makeFieldValidator(step1Schema.shape.type_camion)}>
+                    <form1.Field name="typeCamion" validators={makeFieldValidator(step1Schema.shape.typeCamion)}>
                       {(field) => (
                         <div>
-                          <Label htmlFor="type_camion" className="text-base font-medium text-slate-700 mb-2 block">
+                          <Label htmlFor="typeCamion" className="text-base font-medium text-slate-700 mb-2 block">
                             Type de camion
                           </Label>
                           <div className="relative">
                             <Truck className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" aria-hidden="true" />
-                            <Select value={field.state.value} onValueChange={(v) => field.handleChange(v as Step1Data["type_camion"])}>
-                              <SelectTrigger id="type_camion" className="pl-10 h-12 text-base border-slate-200">
+                            <Select value={field.state.value} onValueChange={(v) => field.handleChange(v as Step1Data["typeCamion"])}>
+                              <SelectTrigger id="typeCamion" className="pl-10 h-12 text-base border-slate-200">
                                 <SelectValue placeholder="Sélectionner…" />
                               </SelectTrigger>
                               <SelectContent>
@@ -548,16 +548,16 @@ export default function ReservationPage() {
                       )}
                     </form1.Field>
 
-                    <form1.Field name="heure_depart" validators={makeFieldValidator(step1Schema.shape.heure_depart)}>
+                    <form1.Field name="heureDepart" validators={makeFieldValidator(step1Schema.shape.heureDepart)}>
                       {(field) => (
                         <div>
-                          <Label htmlFor="heure_depart" className="text-base font-medium text-slate-700 mb-2 block">
+                          <Label htmlFor="heureDepart" className="text-base font-medium text-slate-700 mb-2 block">
                             Heure de départ
                           </Label>
                           <div className="relative">
                             <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none z-10" aria-hidden="true" />
                             <Input
-                              id="heure_depart"
+                              id="heureDepart"
                               type="time"
                               value={field.state.value}
                               onChange={(e) => field.handleChange(e.target.value)}
@@ -576,15 +576,15 @@ export default function ReservationPage() {
                   <div className="relative space-y-5">
                     <div className="absolute left-[10px] top-12 bottom-12 w-px border-l-2 border-dashed border-slate-200 z-0" aria-hidden="true" />
 
-                    <form1.Field name="adresse_depart" validators={makeFieldValidator(step1Schema.shape.adresse_depart)}>
+                    <form1.Field name="adressDepart" validators={makeFieldValidator(step1Schema.shape.adressDepart)}>
                       {(field) => (
                         <div className="relative z-10">
-                          <Label htmlFor="adresse_depart" className="text-base font-medium text-slate-700 mb-2 flex items-center gap-2">
+                          <Label htmlFor="adressDepart" className="text-base font-medium text-slate-700 mb-2 flex items-center gap-2">
                             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold shrink-0" aria-hidden="true">A</span>
                             Adresse de départ
                           </Label>
                           <Input
-                            id="adresse_depart"
+                            id="adressDepart"
                             placeholder="Ex : Port de Gennevilliers, 92230"
                             value={field.state.value}
                             onChange={(e) => field.handleChange(e.target.value)}
@@ -597,15 +597,15 @@ export default function ReservationPage() {
                       )}
                     </form1.Field>
 
-                    <form1.Field name="adresse_arrivee" validators={makeFieldValidator(step1Schema.shape.adresse_arrivee)}>
+                    <form1.Field name="adressArrive" validators={makeFieldValidator(step1Schema.shape.adressArrive)}>
                       {(field) => (
                         <div className="relative z-10">
-                          <Label htmlFor="adresse_arrivee" className="text-base font-medium text-slate-700 mb-2 flex items-center gap-2">
+                          <Label htmlFor="adressArrive" className="text-base font-medium text-slate-700 mb-2 flex items-center gap-2">
                             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-white text-xs font-bold shrink-0" aria-hidden="true">B</span>
                             Adresse d&apos;arrivée
                           </Label>
                           <Input
-                            id="adresse_arrivee"
+                            id="adressArrive"
                             placeholder="Ex : Place de la Mairie, Clichy 92110"
                             value={field.state.value}
                             onChange={(e) => field.handleChange(e.target.value)}
@@ -660,19 +660,19 @@ export default function ReservationPage() {
                 <SectionLabel icon={FileSignature} label="Détails de la mission" />
 
                 <div className="space-y-0">
-                  <RecapItem icon={User} label="Client" value={step1Data.client_nom} />
+                  <RecapItem icon={User} label="Client" value={step1Data.customerName} />
                   <RecapItem
                     icon={Truck}
                     label="Type de véhicule"
-                    value={`${TRUCK_ICONS[dispoResponse?.devis_valide?.type_camion ?? step1Data.type_camion]} ${dispoResponse?.devis_valide?.type_camion ?? step1Data.type_camion}`}
+                    value={`${TRUCK_ICONS[dispoResponse?.devis_valide?.typeCamion ?? step1Data.typeCamion]} ${dispoResponse?.devis_valide?.typeCamion ?? step1Data.typeCamion}`}
                   />
                   <RecapItem
                     icon={Calendar}
                     label="Date & heure de départ"
-                    value={`${dispoResponse?.devis_valide?.date ?? step1Data.date} à ${dispoResponse?.devis_valide?.heure_depart ?? step1Data.heure_depart}`}
+                    value={`${dispoResponse?.devis_valide?.date ?? step1Data.date} à ${dispoResponse?.devis_valide?.heureDepart ?? step1Data.heureDepart}`}
                   />
-                  <RecapItem icon={MapPin} label="Adresse de départ" value={step1Data.adresse_depart} />
-                  <RecapItem icon={Navigation} label="Adresse d'arrivée" value={step1Data.adresse_arrivee} />
+                  <RecapItem icon={MapPin} label="Adresse de départ" value={step1Data.adressDepart} />
+                  <RecapItem icon={Navigation} label="Adresse d'arrivée" value={step1Data.adressArrive} />
                   {dispoResponse?.devis_valide?.distance_total_estimée_km && (
                     <RecapItem
                       icon={Ruler}
@@ -691,7 +691,7 @@ export default function ReservationPage() {
                       </h3>
 
                       {/* 2. Remplace PdfPreview par PreviewModal */}
-                       <PreviewModal data={{
+                      <PreviewModal data={{
                         transporteur: { nom: "Transports pro" },
                         client: { nom: "Client Nom" },
                         prestation: {
@@ -760,16 +760,16 @@ export default function ReservationPage() {
                   <SectionLabel icon={Send} label="Envoi du contrat" />
 
                   <div className="space-y-6">
-                    <form3.Field name="client_email" validators={makeFieldValidator(step3Schema.shape.client_email)}>
+                    <form3.Field name="customerEmail" validators={makeFieldValidator(step3Schema.shape.customerEmail)}>
                       {(field) => (
                         <div>
-                          <Label htmlFor="client_email" className="text-base font-medium text-slate-700 mb-2 block">
+                          <Label htmlFor="customerEmail" className="text-base font-medium text-slate-700 mb-2 block">
                             Adresse e-mail <span className="text-red-400" aria-label="champ obligatoire">*</span>
                           </Label>
                           <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" aria-hidden="true" />
                             <Input
-                              id="client_email"
+                              id="customerEmail"
                               type="email"
                               placeholder="client@entreprise.fr"
                               value={field.state.value}
@@ -786,18 +786,18 @@ export default function ReservationPage() {
                       )}
                     </form3.Field>
 
-                    <form3.Field name="client_telephone" validators={makeFieldValidator(step3Schema.shape.client_telephone)}>
+                    <form3.Field name="customerPhone" validators={makeFieldValidator(step3Schema.shape.customerPhone)}>
                       {(field) => (
                         <div>
-                          <Label htmlFor="client_telephone" className="text-base font-medium text-slate-700 mb-2 block">
+                          <Label htmlFor="customerPhone" className="text-base font-medium text-slate-700 mb-2 block">
                             Téléphone <span className="text-red-400" aria-label="champ obligatoire">*</span>
                           </Label>
                           <div className="relative">
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" aria-hidden="true" />
                             <Input
-                              id="client_telephone"
+                              id="customerPhone"
                               type="tel"
-                              placeholder="06 12 34 56 78"
+                              placeholder="+33 6 12 34 56 78"
                               value={field.state.value}
                               onChange={(e) => field.handleChange(e.target.value)}
                               onBlur={field.handleBlur}
@@ -819,15 +819,15 @@ export default function ReservationPage() {
                     <div className="space-y-2">
                       <div className="flex justify-between gap-4">
                         <span className="text-base text-slate-400">Client</span>
-                        <span className="text-base font-medium text-slate-700 text-right">{step1Data?.client_nom}</span>
+                        <span className="text-base font-medium text-slate-700 text-right">{step1Data?.customerName}</span>
                       </div>
                       <div className="flex justify-between gap-4">
                         <span className="text-base text-slate-400">Camion</span>
-                        <span className="text-base font-medium text-slate-700 text-right">{TRUCK_ICONS[step1Data?.type_camion ?? ""]} {step1Data?.type_camion}</span>
+                        <span className="text-base font-medium text-slate-700 text-right">{TRUCK_ICONS[step1Data?.typeCamion ?? ""]} {step1Data?.typeCamion}</span>
                       </div>
                       <div className="flex justify-between gap-4">
                         <span className="text-base text-slate-400">Date</span>
-                        <span className="text-base font-medium text-slate-700 text-right">{step1Data?.date} · {step1Data?.heure_depart}</span>
+                        <span className="text-base font-medium text-slate-700 text-right">{step1Data?.date} · {step1Data?.heureDepart}</span>
                       </div>
                       {dispoResponse?.paiement?.montant_euros && (
                         <div className="flex justify-between gap-4 pt-2 border-t border-slate-200 mt-1">
@@ -886,7 +886,7 @@ export default function ReservationPage() {
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Contrat envoyé !</h2>
                 <p className="text-base text-slate-500 leading-relaxed mb-8">
                   Le contrat électronique a été transmis à{" "}
-                  <span className="font-semibold text-slate-700">{step1Data?.client_nom}</span>.{" "}
+                  <span className="font-semibold text-slate-700">{step1Data?.customerName}</span>.{" "}
                   Le client recevra une notification pour signature.
                 </p>
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-8 text-left" aria-label="Résumé de la réservation">
@@ -894,15 +894,15 @@ export default function ReservationPage() {
                   <div className="space-y-2.5">
                     <div className="flex justify-between gap-4">
                       <span className="text-base text-slate-500">Client</span>
-                      <span className="text-base font-medium text-slate-800 text-right">{step1Data?.client_nom}</span>
+                      <span className="text-base font-medium text-slate-800 text-right">{step1Data?.customerName}</span>
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-base text-slate-500">Transport</span>
-                      <span className="text-base font-medium text-slate-800 text-right">{TRUCK_ICONS[step1Data?.type_camion ?? ""]} {step1Data?.type_camion}</span>
+                      <span className="text-base font-medium text-slate-800 text-right">{TRUCK_ICONS[step1Data?.typeCamion ?? ""]} {step1Data?.typeCamion}</span>
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-base text-slate-500">Date</span>
-                      <span className="text-base font-medium text-slate-800 text-right">{step1Data?.date} à {step1Data?.heure_depart}</span>
+                      <span className="text-base font-medium text-slate-800 text-right">{step1Data?.date} à {step1Data?.heureDepart}</span>
                     </div>
                     {dispoResponse?.paiement?.montant_euros && (
                       <div className="flex justify-between gap-4 pt-2 border-t border-slate-100 mt-1">
