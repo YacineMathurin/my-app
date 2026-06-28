@@ -9,15 +9,26 @@ interface RequestBody {
   amount: number;
   customerEmail: string;
   recordId: string; // Optional Airtable record ID
+  heureDepart: string;
+  heureArrive: string;
 }
 
 function isRequestBody(body: unknown): body is RequestBody {
   if (!body || typeof body !== "object") return false;
-  const { customerPhone, customerEmail, customerName, amount, recordId } =
-    body as Record<string, unknown>;
+  const {
+    customerPhone,
+    customerEmail,
+    customerName,
+    amount,
+    recordId,
+    heureDepart,
+    heureArrive,
+  } = body as Record<string, unknown>;
   return (
     typeof customerPhone === "string" &&
     typeof customerEmail === "string" &&
+    typeof heureDepart === "string" &&
+    typeof heureArrive === "string" &&
     customerEmail.trim() !== "" &&
     customerPhone.trim() !== "" &&
     typeof customerName === "string" &&
@@ -59,6 +70,8 @@ async function createStripePaymentLink(
   customerPhone: string, // 💡 Ajoutez le numéro de téléphone
   amount: number,
   recordId: string, // 💡 Ajoutez l'ID du record Airtable
+  heureDepart: string,
+  heureArrive: string,
 ): Promise<string> {
   const price = await stripe.prices.create({
     currency: "eur",
@@ -78,6 +91,8 @@ async function createStripePaymentLink(
       customerName: customerName,
       customerPhone: customerPhone,
       content: `Votre reservation pour la prestation de services. Montant: ${amount} EUR est validés. Merci pour votre confiance!`,
+      heureDepart,
+      heureArrive,
       recordId: recordId,
       // Sender
       senderName: "AutomatPro",
@@ -258,8 +273,15 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const { customerPhone, customerEmail, customerName, amount, recordId } =
-      body;
+    const {
+      customerPhone,
+      customerEmail,
+      customerName,
+      amount,
+      recordId,
+      heureDepart,
+      heureArrive,
+    } = body;
 
     const stripe = new Stripe(env.stripeKey, {
       apiVersion: "2026-05-27.dahlia",
@@ -272,6 +294,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       customerPhone,
       amount,
       recordId,
+      heureDepart,
+      heureArrive,
     );
 
     const signatureUrl = await createYouSignRequest(

@@ -100,6 +100,7 @@ interface DispoResponse {
     date: string;
     heureDepart: string;
     distance_total_estimée_km?: string | number;
+    heure_retour_estimee: string
   };
   paiement?: { montant_euros: string | number };
   message?: string;
@@ -372,12 +373,13 @@ export default function ReservationPage() {
     setStep(s);
     setTimeout(() => window.scrollTo({ top: 180, behavior: "smooth" }), 50);
   }, []);
-
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
   const form1 = useForm({
     defaultValues: {
       customerName: "Eiffage",
       typeCamion: "Frigo" as Step1Data["typeCamion"],
-      date: "2026-06-22",
+      date: tomorrow.toLocaleDateString("en-CA"), // YYYY-MM-DD
       heureDepart: "10:00",
       adressDepart: "Port de Gennevilliers, Gennevilliers 92230",
       adressArrive: "Place de la Mairie, Clichy 92110",
@@ -416,7 +418,7 @@ export default function ReservationPage() {
         const res = await fetch("/api/finalize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...step1Data, ...value, amount: dispoResponse?.paiement?.montant_euros }),
+          body: JSON.stringify({ ...step1Data, ...value, amount: dispoResponse?.paiement?.montant_euros, heureArrive: dispoResponse?.devis_valide?.heure_retour_estimee }),
         });
         if (!res.ok) throw new Error(`Erreur serveur : ${res.status}`);
         goToStep(4);
@@ -541,6 +543,7 @@ export default function ReservationPage() {
                               onBlur={field.handleBlur}
                               className="pl-10 h-12 text-base border-slate-200"
                               aria-invalid={field.state.meta.errors.length > 0}
+                              min={new Date().toISOString().split("T")[0]}
                             />
                           </div>
                           <FieldError errors={field.state.meta.errors.map(String)} />
