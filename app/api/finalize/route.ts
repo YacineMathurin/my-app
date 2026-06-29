@@ -11,6 +11,8 @@ interface RequestBody {
   recordId: string; // Optional Airtable record ID
   heureDepart: string;
   heureArrive: string;
+  typeCamion: string;
+  date: string;
 }
 
 function isRequestBody(body: unknown): body is RequestBody {
@@ -23,10 +25,14 @@ function isRequestBody(body: unknown): body is RequestBody {
     recordId,
     heureDepart,
     heureArrive,
+    date,
+    typeCamion,
   } = body as Record<string, unknown>;
   return (
     typeof customerPhone === "string" &&
     typeof customerEmail === "string" &&
+    typeof date === "string" &&
+    typeof typeCamion === "string" &&
     typeof heureDepart === "string" &&
     typeof heureArrive === "string" &&
     customerEmail.trim() !== "" &&
@@ -72,6 +78,8 @@ async function createStripePaymentLink(
   recordId: string, // 💡 Ajoutez l'ID du record Airtable
   heureDepart: string,
   heureArrive: string,
+  date: string,
+  typeCamion: string,
 ): Promise<string> {
   const price = await stripe.prices.create({
     currency: "eur",
@@ -94,6 +102,9 @@ async function createStripePaymentLink(
       heureDepart,
       heureArrive,
       recordId: recordId,
+      dateDepart: date,
+      typeCamion,
+      prix: amount,
       // Sender
       senderName: "AutomatPro",
       senderPhone: "+33612345678",
@@ -281,6 +292,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       recordId,
       heureDepart,
       heureArrive,
+      date,
+      typeCamion,
     } = body;
 
     const stripe = new Stripe(env.stripeKey, {
@@ -296,6 +309,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       recordId,
       heureDepart,
       heureArrive,
+      date,
+      typeCamion,
     );
 
     const signatureUrl = await createYouSignRequest(
