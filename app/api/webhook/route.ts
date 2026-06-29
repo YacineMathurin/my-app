@@ -31,9 +31,10 @@ export async function POST(req: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const metadata = session.metadata;
-
+    console.log("checkout.session.completed");
     if (metadata) {
       try {
+        console.log("About validerReservation");
         await validerReservation({
           customerName: metadata.customerName,
           typeCamion: metadata.typeCamion,
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
           heureArrive: metadata.heureArrive,
           prix: metadata.prix,
         });
+        console.log("About sendBrevoEmail");
 
         await sendBrevoEmail(
           process.env.BREVO_API_KEY!,
