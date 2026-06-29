@@ -30,6 +30,15 @@ export async function validerReservation(data: {
       prix,
     } = data;
 
+    console.log({
+      customerName,
+      typeCamion,
+      dateDepart,
+      heureDepart,
+      heureArrive,
+      prix,
+    });
+
     // 1. Construct correct Date objects
     // Format: "YYYY-MM-DDTHH:mm:ss"
     const startDateTime = new Date(`${dateDepart}T${heureDepart}:00`);
