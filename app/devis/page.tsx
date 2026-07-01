@@ -69,7 +69,14 @@ import {
   Euro,
   Send,
 } from "lucide-react";
-import PreviewModal from "./PreviewModal";
+import dynamic from "next/dynamic";
+
+const PreviewModal = dynamic(
+  () => import("./components/PreviewModal"),
+  {
+    ssr: false,
+  }
+);
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 const TRUCK_VALUES = ["Frigo", "Benne", "Plateau", "Citerne", "Fourgon"] as const;
@@ -85,9 +92,13 @@ const step1Schema = z.object({
 
 const step3Schema = z.object({
   customerEmail: z.string().email("Adresse e-mail invalide"),
+
   customerPhone: z
     .string()
-    .regex(/^(\+33|0)[1-9](\d{2}){4}$/, "Numéro de téléphone invalide"),
+    .transform((value) => value.replace(/\s/g, ""))
+    .refine((value) => /^0[1-9](\d{2}){4}$/.test(value), {
+      message: "Numéro de téléphone invalide",
+    }),
 });
 
 type Step1Data = z.infer<typeof step1Schema>;
@@ -359,6 +370,12 @@ function Footer() {
     </footer>
   );
 }
+
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+
+  return digits.match(/.{1,2}/g)?.join(" ") ?? "";
+};
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ReservationPage() {
@@ -802,7 +819,7 @@ export default function ReservationPage() {
                               type="tel"
                               placeholder="+33 6 12 34 56 78"
                               value={field.state.value}
-                              onChange={(e) => field.handleChange(e.target.value)}
+                              onChange={(e) => field.handleChange(formatPhone(e.target.value))}
                               onBlur={field.handleBlur}
                               className="pl-10 h-12 text-base border-slate-200 focus:border-blue-400"
                               autoComplete="tel"

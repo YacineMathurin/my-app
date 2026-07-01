@@ -67,6 +67,16 @@ function getEnv(): Env {
   return { stripeKey, yousignKey, yousignTemplateId, brevoKey };
 }
 
+function toInternationalPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+
+  if (/^0[1-9]\d{8}$/.test(digits)) {
+    return `+33${digits.slice(1)}`;
+  }
+
+  throw new Error("Numéro de téléphone invalide");
+}
+
 // ── Step helpers ─────────────────────────────────────────────────────────────
 
 async function createStripePaymentLink(
@@ -111,12 +121,12 @@ async function createStripePaymentLink(
       ccName: "AutomatPro",
       ccEmail: "yacinemathurin@gmail.com",
     },
-    // after_completion: {
-    //   type: "redirect",
-    //   redirect: {
-    //     url: "https://yourdomain.com/payment-success",
-    //   },
-    // },
+    after_completion: {
+      type: "redirect",
+      redirect: {
+        url: "https://my-app-chi-jade.vercel.app/devis",
+      },
+    },
   });
 
   return paymentLink.url;
@@ -325,7 +335,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       stripe,
       customerName,
       customerEmail,
-      customerPhone,
+      toInternationalPhone(customerPhone),
       amount,
       recordId,
       heureDepart,
@@ -338,7 +348,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       env.yousignKey,
       env.yousignTemplateId,
       customerName,
-      customerPhone,
+      toInternationalPhone(customerPhone),
       customerEmail,
       stripeUrl,
       [],
