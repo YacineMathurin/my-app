@@ -879,7 +879,7 @@ export default function ReservationPage() {
                           {isFinalizing ? (
                             <><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Envoi…</>
                           ) : (
-                            <><FileSignature className="h-5 w-5" aria-hidden="true" /> Payer</>
+                            <><FileSignature className="h-5 w-5" aria-hidden="true" /> Signer</>
                           )}
                         </Button>
                       )}
