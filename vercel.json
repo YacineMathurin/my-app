@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/check-signatures",
-      "schedule": "*/5 * * * *",
+      "schedule": "0 10 * * *",
       "headers": {
         "Authorization": "Bearer ${CRON_SECRET}"
       }
