@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: C.navy,
     paddingTop: 0,
-    paddingBottom: 48,
+    paddingBottom: 26,
     paddingHorizontal: 0,
   },
 
@@ -36,39 +36,39 @@ const styles = StyleSheet.create({
   headerBand: {
     backgroundColor: C.navy,
     paddingHorizontal: 40,
-    paddingTop: 28,
-    paddingBottom: 22,
+    paddingTop: 18,
+    paddingBottom: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
   companyName: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: "Helvetica-Bold",
     color: C.white,
     letterSpacing: 1.5,
   },
   companyTagline: {
-    fontSize: 8,
+    fontSize: 7.5,
     color: C.amber,
     letterSpacing: 2,
-    marginTop: 3,
+    marginTop: 2,
     textTransform: "uppercase",
   },
-  companyMeta: { fontSize: 8, color: "#8FA3BC", marginTop: 2 },
+  companyMeta: { fontSize: 7.5, color: "#8FA3BC", marginTop: 1 },
 
   // ── Amber accent bar under header ────────────────────────────────────────
   accentBar: {
     backgroundColor: C.amber,
-    height: 4,
+    height: 3,
   },
 
   // ── OT Number watermark strip ────────────────────────────────────────────
   otStrip: {
     backgroundColor: C.white,
     paddingHorizontal: 40,
-    paddingTop: 18,
-    paddingBottom: 18,
+    paddingTop: 12,
+    paddingBottom: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -82,26 +82,26 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   otNumber: {
-    fontSize: 22,
+    fontSize: 19,
     fontFamily: "Helvetica-Bold",
     color: C.navy,
     letterSpacing: -0.5,
   },
-  otMeta: { fontSize: 8, color: C.muted, textAlign: "right" },
-  otMetaVal: { fontSize: 8, color: C.navy, fontFamily: "Helvetica-Bold" },
+  otMeta: { fontSize: 7.5, color: C.muted, textAlign: "right" },
+  otMetaVal: { fontSize: 7.5, color: C.navy, fontFamily: "Helvetica-Bold" },
 
   // ── Body content ─────────────────────────────────────────────────────────
-  body: { paddingHorizontal: 40, paddingTop: 22 },
+  body: { paddingHorizontal: 40, paddingTop: 14 },
 
   // ── Info blocks ──────────────────────────────────────────────────────────
-  infoRow: { flexDirection: "row", gap: 14, marginBottom: 20 },
+  infoRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
   infoBox: {
     flex: 1,
     backgroundColor: C.white,
     borderWidth: 1,
     borderColor: C.line,
     borderRadius: 4,
-    padding: 12,
+    padding: 9,
   },
   infoBoxTitle: {
     fontSize: 7,
@@ -109,22 +109,22 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    marginBottom: 7,
+    marginBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
-    paddingBottom: 5,
+    paddingBottom: 4,
   },
-  infoLine: { fontSize: 9, color: C.navy, marginBottom: 3 },
-  infoLineMuted: { fontSize: 8, color: C.muted, marginBottom: 2 },
+  infoLine: { fontSize: 8.5, color: C.navy, marginBottom: 2 },
+  infoLineMuted: { fontSize: 7.5, color: C.muted, marginBottom: 1.5 },
 
   // ── Route strip ──────────────────────────────────────────────────────────
   routeStrip: {
     backgroundColor: C.navy,
     borderRadius: 4,
-    padding: 14,
+    padding: 10,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 12,
   },
   routePoint: { flex: 1 },
   routeLabel: {
@@ -133,14 +133,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     fontFamily: "Helvetica-Bold",
     textTransform: "uppercase",
-    marginBottom: 3,
+    marginBottom: 2,
   },
   routeCity: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Helvetica-Bold",
     color: C.white,
   },
-  routeAddress: { fontSize: 8, color: "#8FA3BC", marginTop: 2 },
+  routeAddress: { fontSize: 7.5, color: "#8FA3BC", marginTop: 1 },
   routeArrow: { paddingHorizontal: 12, alignItems: "center" },
 
   // ── Table ─────────────────────────────────────────────────────────────────
@@ -149,21 +149,21 @@ const styles = StyleSheet.create({
     color: C.muted,
     letterSpacing: 2,
     textTransform: "uppercase",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   table: {
     borderWidth: 1,
     borderColor: C.line,
     borderRadius: 4,
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: 12,
   },
   tableHead: {
     backgroundColor: C.navy,
     flexDirection: "row",
   },
   tableHeadCell: {
-    padding: 8,
+    padding: 6,
     fontSize: 7,
     color: C.amber,
     fontFamily: "Helvetica-Bold",
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     borderTopColor: C.line,
   },
   tableRowAlt: { backgroundColor: C.rowAlt },
-  tableCell: { padding: 8, fontSize: 9, color: C.navy },
+  tableCell: { padding: 6, fontSize: 8.5, color: C.navy },
   colRef: { width: "14%" },
   colDesc: { flex: 1 },
   colQty: { width: "8%", textAlign: "right" },
@@ -188,10 +188,10 @@ const styles = StyleSheet.create({
   totalsRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginBottom: 20,
+    marginBottom: 12,
   },
   totalsBox: {
-    width: 200,
+    width: 190,
     backgroundColor: C.white,
     borderWidth: 1,
     borderColor: C.line,
@@ -202,17 +202,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
   },
-  totalLineLabel: { fontSize: 8, color: C.muted },
-  totalLineValue: { fontSize: 8, color: C.navy },
+  totalLineLabel: { fontSize: 7.5, color: C.muted },
+  totalLineValue: { fontSize: 7.5, color: C.navy },
   totalTTCLine: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     backgroundColor: C.navy,
   },
   totalTTCLabel: {
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   totalTTCValue: {
-    fontSize: 11,
+    fontSize: 10,
     color: C.white,
     fontFamily: "Helvetica-Bold",
   },
@@ -233,8 +233,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.line,
     borderRadius: 4,
-    padding: 12,
-    marginBottom: 24,
+    padding: 9,
+    marginBottom: 12,
   },
   instructionsTitle: {
     fontSize: 7,
@@ -242,18 +242,18 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  instructionsText: { fontSize: 8.5, color: C.navy, lineHeight: 1.5 },
+  instructionsText: { fontSize: 8, color: C.navy, lineHeight: 1.3 },
 
   // ── Signatures ────────────────────────────────────────────────────────────
-  sigRow: { flexDirection: "row", gap: 20 },
+  sigRow: { flexDirection: "row", gap: 16 },
   sigBox: {
     flex: 1,
     borderWidth: 1,
     borderColor: C.line,
     borderRadius: 4,
-    padding: 12,
+    padding: 9,
     backgroundColor: C.white,
   },
   sigLabel: {
@@ -261,17 +261,17 @@ const styles = StyleSheet.create({
     color: C.muted,
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    marginBottom: 4,
+    marginBottom: 3,
   },
-  sigName: { fontSize: 9, color: C.navy, fontFamily: "Helvetica-Bold" },
-  sigSpace: { height: 44 },
-  sigLine: { height: 1, backgroundColor: C.line, marginTop: 4 },
-  sigDate: { fontSize: 7, color: C.muted, marginTop: 4, textAlign: "right" },
+  sigName: { fontSize: 8.5, color: C.navy, fontFamily: "Helvetica-Bold" },
+  sigSpace: { height: 30 },
+  sigLine: { height: 1, backgroundColor: C.line, marginTop: 3 },
+  sigDate: { fontSize: 7, color: C.muted, marginTop: 3, textAlign: "right" },
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
     position: "absolute",
-    bottom: 20,
+    bottom: 10,
     left: 40,
     right: 40,
     flexDirection: "row",
@@ -279,11 +279,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: C.line,
-    paddingTop: 8,
+    paddingTop: 6,
   },
-  footerText: { fontSize: 7, color: C.muted },
+  footerText: { fontSize: 6.5, color: C.muted },
   footerPage: {
-    fontSize: 7,
+    fontSize: 6.5,
     color: C.muted,
     fontFamily: "Helvetica-Bold",
   },
@@ -348,9 +348,9 @@ const OTDocument = () => (
           <Text style={styles.companyMeta}>SIRET {transporter.siret} · {transporter.tel}</Text>
         </View>
         <View style={{ alignItems: "flex-end" }}>
-          <Text style={{ fontSize: 7, color: "#8FA3BC", marginBottom: 3 }}>DOCUMENT OFFICIEL</Text>
-          <View style={{ backgroundColor: C.amber, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 2 }}>
-            <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: C.navy, letterSpacing: 1 }}>
+          <Text style={{ fontSize: 6.5, color: "#8FA3BC", marginBottom: 2 }}>DOCUMENT OFFICIEL</Text>
+          <View style={{ backgroundColor: C.amber, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 2 }}>
+            <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.navy, letterSpacing: 1 }}>
               ORDRE DE TRANSPORT
             </Text>
           </View>
@@ -366,7 +366,7 @@ const OTDocument = () => (
           <Text style={styles.otLabel}>Référence document</Text>
           <Text style={styles.otNumber}>{OT_NUMBER}</Text>
         </View>
-        <View style={{ alignItems: "flex-end", gap: 3 }}>
+        <View style={{ alignItems: "flex-end", gap: 2 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 30 }}>
             <Text style={styles.otMeta}>Date d&apos;émission</Text>
             <Text style={styles.otMetaVal}>{DATE_EMISSION}</Text>
@@ -377,7 +377,7 @@ const OTDocument = () => (
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 30 }}>
             <Text style={styles.otMeta}>Statut</Text>
-            <Text style={{ fontSize: 8, color: "#2E7D32", fontFamily: "Helvetica-Bold" }}>● CONFIRMÉ</Text>
+            <Text style={{ fontSize: 7.5, color: "#2E7D32", fontFamily: "Helvetica-Bold" }}>● CONFIRMÉ</Text>
           </View>
         </View>
       </View>
@@ -392,7 +392,7 @@ const OTDocument = () => (
             <Text style={[styles.infoLine, { fontFamily: "Helvetica-Bold" }]}>{transporter.name}</Text>
             <Text style={styles.infoLineMuted}>{transporter.address}</Text>
             <Text style={styles.infoLineMuted}>{transporter.city}</Text>
-            <Text style={[styles.infoLineMuted, { marginTop: 4 }]}>SIRET : {transporter.siret}</Text>
+            <Text style={[styles.infoLineMuted, { marginTop: 3 }]}>SIRET : {transporter.siret}</Text>
             <Text style={styles.infoLineMuted}>Tél : {transporter.tel}</Text>
             <Text style={styles.infoLineMuted}>{transporter.email}</Text>
           </View>
@@ -402,7 +402,7 @@ const OTDocument = () => (
             <Text style={styles.infoLineMuted}>Contact : {client.contact}</Text>
             <Text style={styles.infoLineMuted}>{client.address}</Text>
             <Text style={styles.infoLineMuted}>{client.city}</Text>
-            <Text style={[styles.infoLineMuted, { marginTop: 4 }]}>Tél : {client.tel}</Text>
+            <Text style={[styles.infoLineMuted, { marginTop: 3 }]}>Tél : {client.tel}</Text>
           </View>
         </View>
 
@@ -470,7 +470,7 @@ const OTDocument = () => (
           </View>
         </View>
 
-        {/* ── Instructions + Signatures — kept together, pushed to next page if split ── */}
+        {/* ── Instructions + Signatures — kept together on one page ── */}
         <View wrap={false}>
           <View style={styles.instructionsBox}>
             <Text style={styles.instructionsTitle}>Instructions de transport</Text>
