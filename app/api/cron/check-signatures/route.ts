@@ -14,14 +14,17 @@ export async function GET(req: Request) {
 
   for (const dossier of dossiersNonSignes) {
     const response = await fetch(
-      `https://api.yousign.com/v3/signature_requests/${dossier.yousignId}`,
+      `https://api-sandbox.yousign.app/v3/signature_requests/${dossier.yousignId}`,
       {
-        headers: { Authorization: `Bearer ${process.env.YOUSIGN_API_KEY}` },
+        headers: {
+          Authorization: `Bearer ${process.env.YOUSIGN_API_KEY_SANDBOX}`,
+        },
       },
     );
     const data = await response.json();
 
-    if (data.status === "finished") {
+    console.log("data", data);
+    if (data.status === "done") {
       await prisma.dossiers.update({
         where: { id: dossier.id },
         data: { signed: true },
@@ -29,13 +32,18 @@ export async function GET(req: Request) {
     } else {
       // Rappel signature uniquement si pas déjà fait
       const signersRes = await fetch(
-        `https://api.yousign.com/v3/signature_requests/${dossier.yousignId}/signers`,
+        `https://api-sandbox.yousign.app/v3/signature_requests/${dossier.yousignId}/signers`,
         {
-          headers: { Authorization: `Bearer ${process.env.YOUSIGN_API_KEY}` },
+          headers: {
+            Authorization: `Bearer ${process.env.YOUSIGN_API_KEY_SANDBOX}`,
+          },
         },
       );
       const signersData = await signersRes.json();
-      const signatureLink = signersData.data[0]?.signature_link;
+      console.log("signersData", signersData);
+      console.log("signature_link", signersData.signature_link);
+
+      const signatureLink = signersData[0]?.signature_link;
 
       if (signatureLink) {
         await sendBrevoEmail(
