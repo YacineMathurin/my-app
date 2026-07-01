@@ -4,7 +4,7 @@ import { validerReservation } from "@/lib/booking"; // <--- Fonction logique dé
 import { sendBrevoEmail } from "@/lib/email"; // <--- Fonction email déplacée
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY_TEST!, {
-  apiVersion: "2026-05-27.dahlia",
+  apiVersion: "2026-06-24.dahlia",
 });
 
 export async function POST(req: Request) {
@@ -46,9 +46,9 @@ export async function POST(req: Request) {
         console.log("About sendBrevoEmail");
 
         await sendBrevoEmail(
-          process.env.BREVO_API_KEY!,
-          metadata.customerName || "Client",
-          process.env.BOSS_EMAIL as string,
+          process.env.COMPANY_EMAIL || "",
+          `Nouveau paiement reçu de ${metadata.customerName}`,
+          `Bonjour, le client ${metadata.customerName} vient de payer. Veuillez choisir le chauffeur pour cette mission.`,
         );
       } catch (err) {
         console.error("Erreur critique Webhook:", err);

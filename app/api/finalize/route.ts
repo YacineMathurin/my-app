@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-
+import { prisma } from "@/lib/prisma";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface RequestBody {
@@ -111,6 +111,12 @@ async function createStripePaymentLink(
       ccName: "AutomatPro",
       ccEmail: "yacinemathurin@gmail.com",
     },
+    // after_completion: {
+    //   type: "redirect",
+    //   redirect: {
+    //     url: "https://yourdomain.com/payment-success",
+    //   },
+    // },
   });
 
   return paymentLink.url;
@@ -185,7 +191,22 @@ async function createYouSignRequest(
 
   const requestData = (await requestResponse.json()) as { id: string };
   const signatureRequestId = requestData.id;
-
+  // Sauvegarde en base de données
+  try {
+    await prisma.dossiers.create({
+      data: {
+        yousignId: signatureRequestId,
+        customerName: customerName,
+        customerEmail: customerEmail,
+        customerPhone: customerPhone,
+        stripeUrl: stripeUrl,
+        paid: false,
+        signed: false,
+      },
+    });
+  } catch (err) {
+    throw new Error(`Prisma Error: ${JSON.stringify(err)}`);
+  }
   // ── Step 2: Populate Read-Only Text Fields ────────────────────────────────
   // Must happen after creation but before activation.
   // You need the documentId from the template — fetch it first:
@@ -297,7 +318,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     } = body;
 
     const stripe = new Stripe(env.stripeKey, {
-      apiVersion: "2026-05-27.dahlia",
+      apiVersion: "2026-06-24.dahlia",
     });
 
     const stripeUrl = await createStripePaymentLink(

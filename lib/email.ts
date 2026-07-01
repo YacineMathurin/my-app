@@ -1,22 +1,25 @@
 // lib/email.ts
 
 export async function sendBrevoEmail(
-  brevoKey: string,
-  customerName: string,
   targetEmail: string,
+  subject: string,
+  textContent: string,
 ): Promise<void> {
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
       accept: "application/json",
       "content-type": "application/json",
-      "api-key": brevoKey,
+      "api-key": process.env.BREVO_API_KEY || "",
     },
     body: JSON.stringify({
-      sender: { name: "AutomatPro", email: "yacinemathurin@gmail.com" },
+      sender: {
+        name: process.env.COMPANY_NAME || "",
+        email: process.env.COMPANY_EMAIL || "",
+      },
       to: [{ email: targetEmail, name: "Admin" }],
-      subject: "Action requise : Nouveau paiement reçu",
-      textContent: `Bonjour, le client ${customerName} vient de payer. Veuillez choisir le chauffeur pour cette mission.`,
+      subject: subject,
+      textContent: textContent,
     }),
   });
 

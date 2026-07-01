@@ -6,10 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@prisma/client": "6.0.1",
     "@react-pdf/renderer": "^4.5.1",
     "@sparticuz/chromium": "^147.0.0",
     "@tanstack/react-form": "^1.33.0",
@@ -41,6 +43,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "prisma": "^6.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
